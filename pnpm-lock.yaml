@@ -22,6 +22,12 @@ devDependencies:
   '@vue/tsconfig':
     specifier: ^0.8.1
     version: 0.8.1(typescript@5.9.3)(vue@3.5.28)
+  animejs:
+    specifier: ^4.3.5
+    version: 4.3.5
+  foreslash:
+    specifier: ^0.3.11
+    version: 0.3.11
   sass-embedded:
     specifier: ^1.97.3
     version: 1.97.3
@@ -529,6 +535,10 @@ packages:
     resolution: {integrity: sha512-d9dYqZTS90WLiU0I5c6DHj/HcKkF8ZyGN3G5x8wSbslulz70KOxaqCT0hQCo9KOyhVqzqGojvNdJXoTumZOtcw==}
     dev: true
 
+  /animejs@4.3.5:
+    resolution: {integrity: sha512-yuQo/r97TCE+DDu3dTRKjyhBKSEGBcZorWeRW7WCE7EkAQpBoNd2E82dAAD/MDdrbREv7qsw/u7MAqiUX544WQ==}
+    dev: true
+
   /chokidar@4.0.3:
     resolution: {integrity: sha512-Qgzu8kfBvo+cA4962jnP1KkS6Dop5NS6g7R5LFYJr4b8Ub94PPQXUksCw9PvXoeXPRRddRNC5C1JQUR2SMGtnA==}
     engines: {node: '>= 14.16.0'}
@@ -567,6 +577,12 @@ packages:
         optional: true
     dependencies:
       picomatch: 4.0.3
+    dev: true
+
+  /foreslash@0.3.11:
+    resolution: {integrity: sha512-SukoWXaKb90AJlXVYyecg5GzD0bzBvDk3PMPynvJ4hGvrJZ8FDWUiA/GtiMYshymEEofLzaytQ7RhdXc8rV9ng==}
+    dependencies:
+      ts-toolbelt: 9.6.0
     dev: true
 
   /fsevents@2.3.3:
@@ -1046,6 +1062,10 @@ packages:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
+    dev: true
+
+  /ts-toolbelt@9.6.0:
+    resolution: {integrity: sha512-nsZd8ZeNUzukXPlJmTBwUAuABDe/9qtVDelJeT/qW0ow3ZS3BsQJtNkan1802aM9Uf68/Y8ljw86Hu0h5IUW3w==}
     dev: true
 
   /tslib@2.8.1:

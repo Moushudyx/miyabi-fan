@@ -63,9 +63,30 @@ const isOpen = computed(() => activeIndex.value >= 0)
 
 .video-tape-rack__track {
   display: flex;
-  gap: 18px;
+  justify-content: center;
+  gap: 6px;
   overflow-x: auto;
-  padding: 12px 4px;
+  padding: 16px 12px 18px;
+  position: relative;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(7, 14, 18, 0.9), rgba(7, 14, 18, 0.7)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0, rgba(255, 255, 255, 0.06) 2px, transparent 2px, transparent 8px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.video-tape-rack__track::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 8px;
+  height: 4px;
+  background: linear-gradient(90deg, rgba(249, 225, 154, 0.25), rgba(255, 255, 255, 0.08));
+  border-radius: 2px;
 }
 
 .video-tape-rack__overlay {

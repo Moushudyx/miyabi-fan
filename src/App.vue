@@ -34,6 +34,7 @@ import { RouterLink, RouterView } from 'vue-router'
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: var(--header-height, 72px);
   padding: 16px 32px;
   background: rgba(6, 15, 18, 0.82);
   backdrop-filter: blur(12px);
@@ -84,7 +85,6 @@ import { RouterLink, RouterView } from 'vue-router'
 
 .site-main {
   flex: 1;
-  padding-top: 72px;
 }
 
 @media (max-width: 720px) {

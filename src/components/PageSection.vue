@@ -53,10 +53,10 @@ onBeforeUnmount(() => {
 
 <style>
 .page-section {
-  height: calc(100vh - 72px);
+  height: 100vh;
   scroll-snap-align: start;
   scroll-snap-stop: always;
-  padding: 48px 6vw;
+  padding: calc(48px + var(--header-height, 72px)) 6vw 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -93,8 +93,8 @@ onBeforeUnmount(() => {
 
 @media (max-width: 720px) {
   .page-section {
-    height: calc(100vh - 60px);
-    padding: 32px 5vw;
+    height: 100vh;
+    padding: calc(32px + var(--header-height, 60px)) 5vw 32px;
   }
 }
 </style>

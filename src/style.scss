@@ -24,6 +24,7 @@
   --text-2: #fefcec;
   --text-3: #f1fefe;
   --line-soft: rgba(255, 255, 255, 0.08);
+  --header-height: 72px;
 }
 
 * {
@@ -53,4 +54,10 @@ video {
 
 #app {
   min-height: 100vh;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --header-height: 60px;
+  }
 }

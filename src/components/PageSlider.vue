@@ -20,7 +20,7 @@ const axisClass = computed(() => (props.axis === 'x' ? 'page-slider--horizontal'
 
 <style>
 .page-slider {
-  height: calc(100vh - 72px);
+  height: 100vh;
   overflow: auto;
   scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
@@ -38,7 +38,7 @@ const axisClass = computed(() => (props.axis === 'x' ? 'page-slider--horizontal'
 
 @media (max-width: 720px) {
   .page-slider {
-    height: calc(100vh - 60px);
+    height: 100vh;
   }
 }
 </style>

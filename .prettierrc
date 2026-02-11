@@ -1,5 +1,5 @@
 {
-  "bracketSpacing": false,
+  "bracketSpacing": true,
   "parser": "vue",
   "printWidth": 120,
   "semi": false,

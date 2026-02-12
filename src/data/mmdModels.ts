@@ -1,7 +1,4 @@
-import characterModel from '../assets/model/miyabi/星见雅.pmx?url'
-import weaponModel from '../assets/model/miyabi/武器.pmx?url'
-import ornamentModel from '../assets/model/miyabi/幽灵.pmx?url'
-import { splitFileUrl } from '../utils'
+const baseUrl = `${import.meta.env.BASE_URL}model/miyabi/`
 
 export type MmdMotionConfig = {
   id: string
@@ -48,8 +45,8 @@ export const mmdModels: MmdModelConfig[] = [
     id: 'character',
     name: '星见雅',
     subtitle: '雅小姐写真集绝赞发售中',
-    modelUrl: characterModel,
-    resourcePath: splitFileUrl(characterModel).baseUrl,
+    modelUrl: `${baseUrl}星见雅.pmx`,
+    resourcePath: baseUrl,
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
@@ -68,8 +65,8 @@ export const mmdModels: MmdModelConfig[] = [
     id: 'weapon',
     name: '妖刀',
     subtitle: '无尾',
-    modelUrl: weaponModel,
-    resourcePath: splitFileUrl(weaponModel).baseUrl,
+    modelUrl: `${baseUrl}武器.pmx`,
+    resourcePath: baseUrl,
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
@@ -86,8 +83,8 @@ export const mmdModels: MmdModelConfig[] = [
     id: 'ornament',
     name: '幽灵',
     subtitle: '只在空洞中现身的鬼火',
-    modelUrl: ornamentModel,
-    resourcePath: splitFileUrl(ornamentModel).baseUrl,
+    modelUrl: `${baseUrl}幽灵.pmx`,
+    resourcePath: baseUrl,
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',

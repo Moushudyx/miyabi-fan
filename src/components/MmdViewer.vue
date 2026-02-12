@@ -2,7 +2,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import type { MMDAnimationHelper, MMDLoader, OrbitControls as OrbitControlsType } from 'three-stdlib'
 import type { AnimationClip, Clock, Quaternion, SkinnedMesh, Vector3 } from 'three'
-import { deepClone } from 'foreslash'
+import { deepClone, isFunction, isObject } from 'foreslash'
 import type { MmdModelConfig } from '../data/mmdModels'
 import { splitFileUrl } from '../utils'
 import { defaultLightSettings } from './MmdViewer-data'
@@ -63,22 +63,34 @@ const getPhysicsEnabled = () => {
 
 // Ammo.js 只在需要时加载
 const ensureAmmo = async () => {
-  if (typeof (window as { Ammo?: unknown }).Ammo !== 'undefined') {
+  if (isObject((window as { Ammo?: unknown }).Ammo)) {
     isAmmoReady.value = true
     ammoStatusMessage.value = null
     return
   }
 
   try {
+    // @ts-ignore
     const AmmoModule = (await import('ammo.js')) as unknown as
       | ((config?: unknown) => Promise<unknown>)
       | { default?: (config?: unknown) => Promise<unknown> }
-    const initAmmo = typeof AmmoModule === 'function' ? AmmoModule : AmmoModule.default
-    if (initAmmo) {
+    // console.log('加载 Ammo.js', AmmoModule)
+    if (!AmmoModule) {
+      throw new Error('Ammo.js 模块加载失败')
+    }
+    const initAmmo = isFunction(AmmoModule) ? AmmoModule : AmmoModule.default
+    if (isFunction(initAmmo)) {
       const ammo = await initAmmo()
       ;(window as { Ammo?: unknown }).Ammo = ammo
       isAmmoReady.value = true
       ammoStatusMessage.value = null
+    } else if (isObject(AmmoModule)) {
+      // 兼容直接导出对象的情况
+      ;(window as { Ammo?: unknown }).Ammo = AmmoModule
+      isAmmoReady.value = true
+      ammoStatusMessage.value = null
+    } else {
+      throw new Error('Ammo.js 模块格式异常')
     }
   } catch (error) {
     isAmmoReady.value = false

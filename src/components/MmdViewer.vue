@@ -33,6 +33,7 @@ let clock: Clock | null = null
 let ambientLight: import('three').AmbientLight | null = null
 let keyLight: import('three').DirectionalLight | null = null
 let fillLight: import('three').DirectionalLight | null = null
+let threeModule: typeof import('three') | null = null
 let animationFrameId = 0
 let resizeObserver: ResizeObserver | null = null
 const motionClips = new Map<string, AnimationClip>()
@@ -138,6 +139,7 @@ const loadModel = async () => {
   try {
     // 懒加载 three.js 与 MMD 相关模块，避免首屏体积爆炸
     const THREE = await import('three')
+    threeModule = THREE
     const { OrbitControls, MMDAnimationHelper, MMDLoader } = await import('three-stdlib')
 
     scene = new THREE.Scene()
@@ -314,16 +316,15 @@ const applyPose = async (poseId: string) => {
 // 灯光参数变化同步更新场景
 watch(
   () => ({ ...lightSettings.value }),
-  async () => {
-    if (!ambientLight || !keyLight || !fillLight) return
-    const THREE = await import('three')
+  () => {
+    if (!ambientLight || !keyLight || !fillLight || !threeModule) return
     ambientLight.intensity = lightSettings.value.ambientIntensity
     ambientLight.color.set(lightSettings.value.ambientColor)
     keyLight.intensity = lightSettings.value.keyIntensity
     keyLight.color.set(lightSettings.value.keyColor)
     fillLight.intensity = lightSettings.value.fillIntensity
     fillLight.color.set(lightSettings.value.fillColor)
-    updateLightPositions(THREE)
+    updateLightPositions(threeModule)
   },
   { deep: true }
 )
@@ -394,6 +395,7 @@ const disposeThree = () => {
   ambientLight = null
   keyLight = null
   fillLight = null
+  threeModule = null
   motionClips.clear()
   poseCache.clear()
   isLoaded.value = false

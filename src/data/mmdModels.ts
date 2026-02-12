@@ -26,6 +26,7 @@ export type MmdModelConfig = {
   subtitle: string
   modelUrl: string
   resourcePath?: string
+  interactionMode?: 'character' | 'orbit'
   motions?: MmdMotionConfig[]
   poses?: MmdPoseConfig[]
   source?: MmdSourceInfo
@@ -47,6 +48,7 @@ export const mmdModels: MmdModelConfig[] = [
     subtitle: '雅小姐写真集绝赞发售中',
     modelUrl: `${baseUrl}星见雅.pmx`,
     resourcePath: baseUrl,
+    interactionMode: 'character',
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
@@ -67,6 +69,7 @@ export const mmdModels: MmdModelConfig[] = [
     subtitle: '无尾',
     modelUrl: `${baseUrl}武器.pmx`,
     resourcePath: baseUrl,
+    interactionMode: 'orbit',
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
@@ -85,6 +88,7 @@ export const mmdModels: MmdModelConfig[] = [
     subtitle: '只在空洞中现身的鬼火',
     modelUrl: `${baseUrl}幽灵.pmx`,
     resourcePath: baseUrl,
+    interactionMode: 'orbit',
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',

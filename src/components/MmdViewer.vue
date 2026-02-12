@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
-import type { MMDAnimationHelper, MMDLoader } from 'three-stdlib'
+import type { MMDAnimationHelper, MMDLoader, OrbitControls as OrbitControlsType } from 'three-stdlib'
 import type { AnimationClip, Clock, Quaternion, SkinnedMesh, Vector3 } from 'three'
 import { deepClone } from 'foreslash'
 import type { MmdModelConfig } from '../data/mmdModels'
@@ -24,6 +24,8 @@ const lightSettings = ref(deepClone(defaultLightSettings))
 let renderer: import('three').WebGLRenderer | null = null
 let scene: import('three').Scene | null = null
 let camera: import('three').PerspectiveCamera | null = null
+let orbitControls: OrbitControlsType | null = null
+let orbitControlsCtor: typeof OrbitControlsType | null = null
 let modelRoot: import('three').Object3D | null = null
 let modelMesh: SkinnedMesh | null = null
 let animationHelper: MMDAnimationHelper | null = null
@@ -51,6 +53,8 @@ const rotateSpeed = 0.005
 const panSpeed = 0.03
 const zoomSpeed = 0.02
 const axisLockThreshold = 6
+const interactionMode = () => props.model.interactionMode ?? 'character'
+const activeInteractionMode = ref<'character' | 'orbit'>(interactionMode())
 
 const getPhysicsEnabled = () => {
   const hasAmmo = typeof (window as { Ammo?: unknown }).Ammo !== 'undefined'
@@ -170,6 +174,40 @@ const clampZoomAlongForward = (delta: number) => {
   camera.position.copy(currentPos.addScaledVector(forward, t))
 }
 
+const updateOrbitTarget = () => {
+  if (!orbitControls || !modelRoot || !modelBoundsCenter) return
+  orbitControls.target.copy(modelBoundsCenter)
+  orbitControls.update()
+}
+
+const applyInteractionMode = (mode: 'character' | 'orbit') => {
+  if (!renderer || !camera) return
+
+  // 切换模式时必须先清理旧监听，避免重复绑定。
+  detachPointerControls?.()
+  orbitControls?.dispose()
+  orbitControls = null
+
+  resetCameraView()
+
+  if (mode === 'orbit') {
+    if (!orbitControlsCtor) return
+    orbitControls = new orbitControlsCtor(camera, renderer.domElement)
+    orbitControls.enableDamping = true
+    orbitControls.dampingFactor = 0.08
+    orbitControls.enablePan = true
+    orbitControls.minDistance = zoomLimits.min
+    orbitControls.maxDistance = zoomLimits.max
+    if (modelBoundsCenter) {
+      orbitControls.minDistance = Math.max(zoomLimits.min, modelBoundsRadius * 0.1)
+      orbitControls.maxDistance = Math.max(orbitControls.minDistance + 1, zoomLimits.max)
+      updateOrbitTarget()
+    }
+  } else {
+    setupPointerControls()
+  }
+}
+
 const setupPointerControls = () => {
   if (!renderer || !stageRef.value || !camera) return
 
@@ -279,7 +317,8 @@ const loadModel = async () => {
     // 懒加载 three.js 与 MMD 相关模块，避免首屏体积爆炸
     const THREE = await import('three')
     threeModule = THREE
-    const { MMDAnimationHelper, MMDLoader } = await import('three-stdlib')
+    const { MMDAnimationHelper, MMDLoader, OrbitControls } = await import('three-stdlib')
+    orbitControlsCtor = OrbitControls
 
     scene = new THREE.Scene()
 
@@ -304,7 +343,7 @@ const loadModel = async () => {
     renderer.toneMappingExposure = 1.05
     stageRef.value.appendChild(renderer.domElement)
 
-    setupPointerControls()
+    applyInteractionMode(activeInteractionMode.value)
 
     const resize = () => {
       if (!stageRef.value || !camera || !renderer) return
@@ -342,6 +381,9 @@ const loadModel = async () => {
     const sphere = bounds.getBoundingSphere(new THREE.Sphere())
     modelBoundsCenter = sphere.center.clone()
     modelBoundsRadius = sphere.radius
+    if (activeInteractionMode.value === 'orbit') {
+      applyInteractionMode('orbit')
+    }
     // AnimationHelper 负责后续的 VMD 动作与物理更新
     animationHelper = new MMDAnimationHelper({ afterglow: 0.0 })
     if (props.model.enablePhysics) {
@@ -375,8 +417,8 @@ const loadModel = async () => {
 //   if (!controls) return
 //   controls.reset()
 // }
-/** 重置镜头 */
-const resetCamera = () => {
+/** 重置镜头（不影响灯光与模式） */
+const resetCameraView = () => {
   if (!camera) return
   if (initialCameraPosition) {
     camera.position.copy(initialCameraPosition)
@@ -390,6 +432,14 @@ const resetCamera = () => {
     modelRoot.rotation.set(...props.model.modelRotation)
   }
   cameraYOffset = 0
+  if (orbitControls) {
+    updateOrbitTarget()
+  }
+}
+
+/** 重置视图（镜头 + 模型 + 灯光） */
+const resetScene = () => {
+  resetCameraView()
   lightSettings.value = deepClone(defaultLightSettings)
 }
 /** 清除动画状态, 回到默认姿势 */
@@ -526,6 +576,8 @@ const disposeThree = () => {
   }
 
   detachPointerControls?.()
+  orbitControls?.dispose()
+  orbitControls = null
 
   resizeObserver?.disconnect()
   resizeObserver = null
@@ -573,8 +625,25 @@ onBeforeUnmount(() => {
         <p class="mmd-viewer__subtitle">{{ props.model.subtitle }}</p>
       </div> -->
       <div v-if="isLoaded" class="mmd-viewer__actions">
-        <!-- <button class="mmd-button mmd-button--ghost" type="button" @click="resetControls">重置轨道</button> -->
-        <button class="mmd-button" type="button" @click="resetCamera">回到初始</button>
+        <button class="mmd-button" type="button" @click="resetScene">初始状态</button>
+        <div class="mmd-viewer__mode-toggle">
+          <button
+            class="mmd-button mmd-button--ghost"
+            type="button"
+            :class="{ 'mmd-button--active': activeInteractionMode === 'character' }"
+            @click="activeInteractionMode = 'character'; applyInteractionMode('character')"
+          >
+            角色鉴赏镜头
+          </button>
+          <button
+            class="mmd-button mmd-button--ghost"
+            type="button"
+            :class="{ 'mmd-button--active': activeInteractionMode === 'orbit' }"
+            @click="activeInteractionMode = 'orbit'; applyInteractionMode('orbit')"
+          >
+            经典镜头
+          </button>
+        </div>
       </div>
     </header>
 
@@ -805,6 +874,14 @@ onBeforeUnmount(() => {
 .mmd-viewer__actions {
   display: flex;
   gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mmd-viewer__mode-toggle {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .mmd-viewer__stage {

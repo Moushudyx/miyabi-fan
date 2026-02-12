@@ -2,7 +2,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import type { MMDAnimationHelper, MMDLoader, OrbitControls as OrbitControlsType } from 'three-stdlib'
 import type { AnimationClip, Clock, Quaternion, SkinnedMesh, Vector3 } from 'three'
-import { deepClone, isFunction, isObject } from 'foreslash'
+import { deepClone, isFunction, isObject, sleep } from 'foreslash'
 import type { MmdModelConfig } from '../data/mmdModels'
 import { splitFileUrl } from '../utils'
 import { defaultLightSettings } from './MmdViewer-data'
@@ -229,8 +229,7 @@ const setupPointerControls = () => {
   let dragMode: 'rotate' | 'pan' | null = null
 
   const getPointer = (event: PointerEvent) => ({ x: event.clientX, y: event.clientY })
-  const distanceBetween = (a: { x: number; y: number }, b: { x: number; y: number }) =>
-    Math.hypot(a.x - b.x, a.y - b.y)
+  const distanceBetween = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y)
 
   const onPointerDown = (event: PointerEvent) => {
     if (!isLoaded.value) return
@@ -238,7 +237,7 @@ const setupPointerControls = () => {
     pointers.set(event.pointerId, getPointer(event))
     if (pointers.size === 2) {
       const [first, second] = Array.from(pointers.values())
-      lastPinchDistance = distanceBetween(first, second)
+      lastPinchDistance = distanceBetween(first!, second!)
       dragMode = null
     }
   }
@@ -253,7 +252,7 @@ const setupPointerControls = () => {
 
     if (pointers.size === 2) {
       const [first, second] = Array.from(pointers.values())
-      const distance = distanceBetween(first, second)
+      const distance = distanceBetween(first!, second!)
       const delta = distance - lastPinchDistance
       lastPinchDistance = distance
       clampZoomAlongForward(delta * zoomSpeed)
@@ -452,6 +451,16 @@ const resetCameraView = () => {
 /** 重置视图（镜头 + 模型 + 灯光） */
 const resetScene = () => {
   resetCameraView()
+  if (modelMesh && animationHelper) {
+    // 避免重复 add/remove 造成物理拉扯，改为临时关闭物理后再恢复。
+    animationHelper.enable('physics', false)
+    modelMesh.pose()
+    activeMotionId.value = null
+    activePoseId.value = null
+    sleep(500).then(() => {
+      if (animationHelper && getPhysicsEnabled()) animationHelper.enable('physics', true)
+    })
+  }
   lightSettings.value = deepClone(defaultLightSettings)
 }
 /** 清除动画状态, 回到默认姿势 */
@@ -643,7 +652,12 @@ onBeforeUnmount(() => {
             class="mmd-button mmd-button--ghost"
             type="button"
             :class="{ 'mmd-button--active': activeInteractionMode === 'character' }"
-            @click="activeInteractionMode = 'character'; applyInteractionMode('character')"
+            @click="
+              () => {
+                activeInteractionMode = 'character'
+                applyInteractionMode('character')
+              }
+            "
           >
             角色鉴赏镜头
           </button>
@@ -651,7 +665,12 @@ onBeforeUnmount(() => {
             class="mmd-button mmd-button--ghost"
             type="button"
             :class="{ 'mmd-button--active': activeInteractionMode === 'orbit' }"
-            @click="activeInteractionMode = 'orbit'; applyInteractionMode('orbit')"
+            @click="
+              () => {
+                activeInteractionMode = 'orbit'
+                applyInteractionMode('orbit')
+              }
+            "
           >
             经典镜头
           </button>
@@ -796,9 +815,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <p v-if="ammoStatusMessage" class="mmd-viewer__hint">
-      物理提示：{{ ammoStatusMessage }}
-    </p>
+    <p v-if="ammoStatusMessage" class="mmd-viewer__hint">物理提示：{{ ammoStatusMessage }}</p>
 
     <div v-if="props.model.motions?.length || props.model.poses?.length" class="mmd-viewer__controls">
       <div v-if="props.model.motions?.length" class="mmd-viewer__control-group">

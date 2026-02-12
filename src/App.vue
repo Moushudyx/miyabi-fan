@@ -11,6 +11,7 @@ import { RouterLink, RouterView } from 'vue-router'
       </div>
       <nav class="site-header__nav" aria-label="主导航">
         <RouterLink to="/" class="nav-link">首页</RouterLink>
+        <RouterLink to="/view3d" class="nav-link">鉴赏</RouterLink>
         <RouterLink to="/about" class="nav-link">关于</RouterLink>
       </nav>
     </header>

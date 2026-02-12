@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
-import type { MMDAnimationHelper, MMDLoader, OrbitControls } from 'three-stdlib'
-import type { AnimationClip, Clock, SkinnedMesh } from 'three'
+import type { MMDAnimationHelper, MMDLoader } from 'three-stdlib'
+import type { AnimationClip, Clock, Quaternion, SkinnedMesh, Vector3 } from 'three'
 import { deepClone } from 'foreslash'
 import type { MmdModelConfig } from '../data/mmdModels'
 import { splitFileUrl } from '../utils'
@@ -24,7 +24,6 @@ const lightSettings = ref(deepClone(defaultLightSettings))
 let renderer: import('three').WebGLRenderer | null = null
 let scene: import('three').Scene | null = null
 let camera: import('three').PerspectiveCamera | null = null
-let controls: OrbitControls | null = null
 let modelRoot: import('three').Object3D | null = null
 let modelMesh: SkinnedMesh | null = null
 let animationHelper: MMDAnimationHelper | null = null
@@ -36,8 +35,22 @@ let fillLight: import('three').DirectionalLight | null = null
 let threeModule: typeof import('three') | null = null
 let animationFrameId = 0
 let resizeObserver: ResizeObserver | null = null
+let initialCameraPosition: Vector3 | null = null
+let initialCameraQuaternion: Quaternion | null = null
+let cameraForward: Vector3 | null = null
+let cameraYOffset = 0
+let modelBoundsCenter: Vector3 | null = null
+let modelBoundsRadius = 0
+let detachPointerControls: (() => void) | null = null
 const motionClips = new Map<string, AnimationClip>()
 const poseCache = new Map<string, object>()
+
+const zoomLimits = { min: 4, max: 120 }
+const panLimits = { min: -12, max: 18 }
+const rotateSpeed = 0.005
+const panSpeed = 0.03
+const zoomSpeed = 0.02
+const axisLockThreshold = 6
 
 const getPhysicsEnabled = () => {
   const hasAmmo = typeof (window as { Ammo?: unknown }).Ammo !== 'undefined'
@@ -126,6 +139,132 @@ const applyMmdColorSpaceFix = (root: import('three').Object3D, THREE: typeof imp
   })
 }
 
+const clampZoomAlongForward = (delta: number) => {
+  if (!camera || !cameraForward || !modelRoot || !threeModule) return
+  const forward = cameraForward.clone().normalize()
+  const center = modelBoundsCenter ?? modelRoot.position
+  // 设为 1 可以完全阻止穿模, 考虑到有贴脸需求这里改为 0.1
+  const minDistance = Math.max(zoomLimits.min, modelBoundsRadius * 0.1)
+  const maxDistance = Math.max(minDistance + 1, zoomLimits.max)
+  const currentPos = camera.position.clone()
+  const desiredPos = currentPos.clone().addScaledVector(forward, delta)
+  const desiredDistance = desiredPos.distanceTo(center)
+
+  if (desiredDistance >= minDistance && desiredDistance <= maxDistance) {
+    camera.position.copy(desiredPos)
+    return
+  }
+
+  const targetDistance = desiredDistance < minDistance ? minDistance : maxDistance
+  const p = currentPos.clone().sub(center)
+  const b = 2 * p.dot(forward)
+  const c = p.dot(p) - targetDistance * targetDistance
+  const discriminant = b * b - 4 * c
+  if (discriminant < 0) return
+
+  const sqrt = Math.sqrt(discriminant)
+  const t1 = (-b + sqrt) / 2
+  const t2 = (-b - sqrt) / 2
+  const desiredDelta = desiredPos.clone().sub(currentPos).dot(forward)
+  const t = Math.abs(t2 - desiredDelta) < Math.abs(t1 - desiredDelta) ? t2 : t1
+  camera.position.copy(currentPos.addScaledVector(forward, t))
+}
+
+const setupPointerControls = () => {
+  if (!renderer || !stageRef.value || !camera) return
+
+  const dom = stageRef.value
+  const pointers = new Map<number, { x: number; y: number }>()
+  let lastPinchDistance = 0
+  let dragMode: 'rotate' | 'pan' | null = null
+
+  const getPointer = (event: PointerEvent) => ({ x: event.clientX, y: event.clientY })
+  const distanceBetween = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    Math.hypot(a.x - b.x, a.y - b.y)
+
+  const onPointerDown = (event: PointerEvent) => {
+    if (!isLoaded.value) return
+    dom.setPointerCapture(event.pointerId)
+    pointers.set(event.pointerId, getPointer(event))
+    if (pointers.size === 2) {
+      const [first, second] = Array.from(pointers.values())
+      lastPinchDistance = distanceBetween(first, second)
+      dragMode = null
+    }
+  }
+
+  const onPointerMove = (event: PointerEvent) => {
+    if (!isLoaded.value || !camera || !modelRoot) return
+    const current = getPointer(event)
+    const prev = pointers.get(event.pointerId)
+    if (!prev) return
+
+    pointers.set(event.pointerId, current)
+
+    if (pointers.size === 2) {
+      const [first, second] = Array.from(pointers.values())
+      const distance = distanceBetween(first, second)
+      const delta = distance - lastPinchDistance
+      lastPinchDistance = distance
+      clampZoomAlongForward(delta * zoomSpeed)
+      return
+    }
+
+    const dx = current.x - prev.x
+    const dy = current.y - prev.y
+
+    if (!dragMode) {
+      if (Math.abs(dx) > Math.abs(dy) + axisLockThreshold) {
+        dragMode = 'rotate'
+      } else if (Math.abs(dy) > Math.abs(dx) + axisLockThreshold) {
+        dragMode = 'pan'
+      } else {
+        return
+      }
+    }
+
+    if (dragMode === 'rotate') {
+      modelRoot.rotation.y += dx * rotateSpeed
+    } else if (dragMode === 'pan') {
+      const baseY = initialCameraPosition?.y ?? camera.position.y
+      cameraYOffset = Math.min(panLimits.max, Math.max(panLimits.min, cameraYOffset + dy * panSpeed))
+      camera.position.y = baseY + cameraYOffset
+    }
+  }
+
+  const onPointerUp = (event: PointerEvent) => {
+    pointers.delete(event.pointerId)
+    if (pointers.size < 2) {
+      lastPinchDistance = 0
+    }
+    if (pointers.size === 0) {
+      dragMode = null
+    }
+    dom.releasePointerCapture(event.pointerId)
+  }
+
+  const onWheel = (event: WheelEvent) => {
+    if (!isLoaded.value) return
+    event.preventDefault()
+    clampZoomAlongForward(-event.deltaY * zoomSpeed)
+  }
+
+  dom.addEventListener('pointerdown', onPointerDown)
+  dom.addEventListener('pointermove', onPointerMove)
+  dom.addEventListener('pointerup', onPointerUp)
+  dom.addEventListener('pointercancel', onPointerUp)
+  dom.addEventListener('wheel', onWheel, { passive: false })
+
+  detachPointerControls = () => {
+    dom.removeEventListener('pointerdown', onPointerDown)
+    dom.removeEventListener('pointermove', onPointerMove)
+    dom.removeEventListener('pointerup', onPointerUp)
+    dom.removeEventListener('pointercancel', onPointerUp)
+    dom.removeEventListener('wheel', onWheel)
+    detachPointerControls = null
+  }
+}
+
 const loadModel = async () => {
   if (isLoading.value || isLoaded.value) return
   if (!stageRef.value) {
@@ -140,7 +279,7 @@ const loadModel = async () => {
     // 懒加载 three.js 与 MMD 相关模块，避免首屏体积爆炸
     const THREE = await import('three')
     threeModule = THREE
-    const { OrbitControls, MMDAnimationHelper, MMDLoader } = await import('three-stdlib')
+    const { MMDAnimationHelper, MMDLoader } = await import('three-stdlib')
 
     scene = new THREE.Scene()
 
@@ -153,6 +292,10 @@ const loadModel = async () => {
 
     camera = new THREE.PerspectiveCamera(35, 1, 0.1, 2000)
     camera.position.set(...props.model.cameraPosition)
+    initialCameraPosition = camera.position.clone()
+    initialCameraQuaternion = camera.quaternion.clone()
+    cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize()
+    cameraYOffset = 0
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -161,16 +304,7 @@ const loadModel = async () => {
     renderer.toneMappingExposure = 1.05
     stageRef.value.appendChild(renderer.domElement)
 
-    controls = new OrbitControls(camera, renderer.domElement)
-    controls.enableDamping = true
-    controls.dampingFactor = 0.08
-    controls.enablePan = false
-    controls.minDistance = 4
-    controls.maxDistance = 120
-    controls.rotateSpeed = 0.55
-    controls.zoomSpeed = 0.9
-    controls.target.set(...props.model.cameraTarget)
-    controls.update()
+    setupPointerControls()
 
     const resize = () => {
       if (!stageRef.value || !camera || !renderer) return
@@ -204,6 +338,10 @@ const loadModel = async () => {
 
     modelRoot = loadedModel
     modelMesh = loadedModel as SkinnedMesh
+    const bounds = new THREE.Box3().setFromObject(loadedModel)
+    const sphere = bounds.getBoundingSphere(new THREE.Sphere())
+    modelBoundsCenter = sphere.center.clone()
+    modelBoundsRadius = sphere.radius
     // AnimationHelper 负责后续的 VMD 动作与物理更新
     animationHelper = new MMDAnimationHelper({ afterglow: 0.0 })
     if (props.model.enablePhysics) {
@@ -219,7 +357,6 @@ const loadModel = async () => {
       animationFrameId = window.requestAnimationFrame(animate)
       const delta = clock?.getDelta() ?? 0
       animationHelper?.update(delta)
-      controls?.update()
       renderer.render(scene, camera)
     }
 
@@ -240,10 +377,19 @@ const loadModel = async () => {
 // }
 /** 重置镜头 */
 const resetCamera = () => {
-  if (!camera || !controls) return
-  camera.position.set(...props.model.cameraPosition)
-  controls.target.set(...props.model.cameraTarget)
-  controls.update()
+  if (!camera) return
+  if (initialCameraPosition) {
+    camera.position.copy(initialCameraPosition)
+  } else {
+    camera.position.set(...props.model.cameraPosition)
+  }
+  if (initialCameraQuaternion) {
+    camera.quaternion.copy(initialCameraQuaternion)
+  }
+  if (modelRoot) {
+    modelRoot.rotation.set(...props.model.modelRotation)
+  }
+  cameraYOffset = 0
   lightSettings.value = deepClone(defaultLightSettings)
 }
 /** 清除动画状态, 回到默认姿势 */
@@ -268,7 +414,10 @@ const applyMotion = async (motionId: string) => {
     let clip = motionClips.get(motionId)
     if (!clip) {
       clip = await new Promise<AnimationClip>((resolve, reject) => {
-        if (!mmdLoader || !modelMesh) return
+        if (!mmdLoader || !modelMesh) {
+          reject(new Error('动作加载已中断。'))
+          return
+        }
         const { baseUrl, fileName } = splitFileUrl(motion.vmdUrl)
         mmdLoader.setAnimationPath(baseUrl)
         mmdLoader.loadAnimation(fileName, modelMesh, (result) => resolve(result as AnimationClip), undefined, reject)
@@ -296,7 +445,10 @@ const applyPose = async (poseId: string) => {
     let vpd = poseCache.get(poseId)
     if (!vpd) {
       vpd = await new Promise<object>((resolve, reject) => {
-        if (!mmdLoader) return
+        if (!mmdLoader) {
+          reject(new Error('姿势加载已中断。'))
+          return
+        }
         const { baseUrl, fileName } = splitFileUrl(pose.vpdUrl)
         mmdLoader.setAnimationPath(baseUrl)
         mmdLoader.loadVPD(fileName, pose.isUnicode ?? true, resolve, undefined, reject)
@@ -373,8 +525,7 @@ const disposeThree = () => {
     animationHelper.remove(modelMesh)
   }
 
-  controls?.dispose()
-  controls = null
+  detachPointerControls?.()
 
   resizeObserver?.disconnect()
   resizeObserver = null
@@ -396,6 +547,11 @@ const disposeThree = () => {
   keyLight = null
   fillLight = null
   threeModule = null
+  initialCameraPosition = null
+  initialCameraQuaternion = null
+  cameraForward = null
+  modelBoundsCenter = null
+  modelBoundsRadius = 0
   motionClips.clear()
   poseCache.clear()
   isLoaded.value = false
@@ -660,6 +816,7 @@ onBeforeUnmount(() => {
     linear-gradient(150deg, rgba(15, 26, 32, 0.9), rgba(6, 12, 14, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
+  touch-action: none;
 }
 
 .mmd-viewer__stage canvas {

@@ -63,7 +63,7 @@ export const mmdModels: MmdModelConfig[] = [
   },
   {
     id: 'weapon',
-    name: '妖刀',
+    name: '妖刀(材质仍有问题目前无法加载)',
     subtitle: '无尾',
     modelUrl: `${baseUrl}武器.pmx`,
     resourcePath: baseUrl,
@@ -81,7 +81,7 @@ export const mmdModels: MmdModelConfig[] = [
   },
   {
     id: 'ornament',
-    name: '幽灵',
+    name: '幽灵(材质仍有问题目前无法加载)',
     subtitle: '只在空洞中现身的鬼火',
     modelUrl: `${baseUrl}幽灵.pmx`,
     resourcePath: baseUrl,

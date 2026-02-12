@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import type { MMDAnimationHelper, MMDLoader, OrbitControls } from 'three-stdlib'
 import type { AnimationClip, Clock, SkinnedMesh } from 'three'
+import { deepClone } from 'foreslash'
 import type { MmdModelConfig } from '../data/mmdModels'
 import { splitFileUrl } from '../utils'
+import { defaultLightSettings } from './MmdViewer-data'
 
 const props = defineProps<{ model: MmdModelConfig }>()
 
@@ -13,6 +15,11 @@ const isLoaded = ref(false)
 const errorMessage = ref<string | null>(null)
 const activeMotionId = ref<string | null>(null)
 const activePoseId = ref<string | null>(null)
+const isAmmoReady = ref(false)
+const ammoStatusMessage = ref<string | null>(null)
+
+// 灯光调参默认配置
+const lightSettings = ref(deepClone(defaultLightSettings))
 
 let renderer: import('three').WebGLRenderer | null = null
 let scene: import('three').Scene | null = null
@@ -23,6 +30,9 @@ let modelMesh: SkinnedMesh | null = null
 let animationHelper: MMDAnimationHelper | null = null
 let mmdLoader: MMDLoader | null = null
 let clock: Clock | null = null
+let ambientLight: import('three').AmbientLight | null = null
+let keyLight: import('three').DirectionalLight | null = null
+let fillLight: import('three').DirectionalLight | null = null
 let animationFrameId = 0
 let resizeObserver: ResizeObserver | null = null
 const motionClips = new Map<string, AnimationClip>()
@@ -33,6 +43,56 @@ const getPhysicsEnabled = () => {
   return Boolean(props.model.enablePhysics && hasAmmo)
 }
 
+// Ammo.js 只在需要时加载
+const ensureAmmo = async () => {
+  if (typeof (window as { Ammo?: unknown }).Ammo !== 'undefined') {
+    isAmmoReady.value = true
+    ammoStatusMessage.value = null
+    return
+  }
+
+  try {
+    const AmmoModule = (await import('ammo.js')) as unknown as
+      | ((config?: unknown) => Promise<unknown>)
+      | { default?: (config?: unknown) => Promise<unknown> }
+    const initAmmo = typeof AmmoModule === 'function' ? AmmoModule : AmmoModule.default
+    if (initAmmo) {
+      const ammo = await initAmmo()
+      ;(window as { Ammo?: unknown }).Ammo = ammo
+      isAmmoReady.value = true
+      ammoStatusMessage.value = null
+    }
+  } catch (error) {
+    isAmmoReady.value = false
+    ammoStatusMessage.value = error instanceof Error ? error.message : 'Ammo.js 加载失败，物理已关闭。'
+  }
+}
+
+// 将方位角/高度角转换为方向光位置
+const updateLightPositions = (THREE: typeof import('three')) => {
+  if (!keyLight || !fillLight) return
+  const toRad = THREE.MathUtils.degToRad
+  const toSpherical = (azimuth: number, elevation: number, distance: number) => {
+    const phi = toRad(90 - elevation)
+    const theta = toRad(azimuth)
+    return new THREE.Vector3().setFromSphericalCoords(distance, phi, theta)
+  }
+
+  const keyPos = toSpherical(
+    lightSettings.value.keyAzimuth,
+    lightSettings.value.keyElevation,
+    lightSettings.value.keyDistance
+  )
+  const fillPos = toSpherical(
+    lightSettings.value.fillAzimuth,
+    lightSettings.value.fillElevation,
+    lightSettings.value.fillDistance
+  )
+  keyLight.position.copy(keyPos)
+  fillLight.position.copy(fillPos)
+}
+
+// 修正 PMX 贴图在线性空间下的偏色问题
 const applyMmdColorSpaceFix = (root: import('three').Object3D, THREE: typeof import('three')) => {
   // 避免 MMDLoader 颜色偏白的问题，参考 three.js #28336
   root.traverse((child) => {
@@ -82,14 +142,12 @@ const loadModel = async () => {
 
     scene = new THREE.Scene()
 
-    const ambient = new THREE.AmbientLight(0xffffff, 0.65)
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.85)
-    const fillLight = new THREE.DirectionalLight(0x6fd6d3, 0.35)
+    ambientLight = new THREE.AmbientLight(lightSettings.value.ambientColor, lightSettings.value.ambientIntensity)
+    keyLight = new THREE.DirectionalLight(lightSettings.value.keyColor, lightSettings.value.keyIntensity)
+    fillLight = new THREE.DirectionalLight(lightSettings.value.fillColor, lightSettings.value.fillIntensity)
+    updateLightPositions(THREE)
 
-    keyLight.position.set(8, 18, 12)
-    fillLight.position.set(-10, 6, -8)
-
-    scene.add(ambient, keyLight, fillLight)
+    scene.add(ambientLight, keyLight, fillLight)
 
     camera = new THREE.PerspectiveCamera(35, 1, 0.1, 2000)
     camera.position.set(...props.model.cameraPosition)
@@ -146,6 +204,10 @@ const loadModel = async () => {
     modelMesh = loadedModel as SkinnedMesh
     // AnimationHelper 负责后续的 VMD 动作与物理更新
     animationHelper = new MMDAnimationHelper({ afterglow: 0.0 })
+    if (props.model.enablePhysics) {
+      // 物理依赖 Ammo.js，按需加载。
+      await ensureAmmo()
+    }
     animationHelper.add(modelMesh, { physics: getPhysicsEnabled() })
     clock = new THREE.Clock()
     scene.add(loadedModel)
@@ -180,6 +242,7 @@ const resetCamera = () => {
   camera.position.set(...props.model.cameraPosition)
   controls.target.set(...props.model.cameraTarget)
   controls.update()
+  lightSettings.value = deepClone(defaultLightSettings)
 }
 /** 清除动画状态, 回到默认姿势 */
 const clearAnimationState = () => {
@@ -203,9 +266,10 @@ const applyMotion = async (motionId: string) => {
     let clip = motionClips.get(motionId)
     if (!clip) {
       clip = await new Promise<AnimationClip>((resolve, reject) => {
+        if (!mmdLoader || !modelMesh) return
         const { baseUrl, fileName } = splitFileUrl(motion.vmdUrl)
-        mmdLoader!.setAnimationPath(baseUrl)
-        mmdLoader!.loadAnimation(fileName, modelMesh!, (result) => resolve(result as AnimationClip), undefined, reject)
+        mmdLoader.setAnimationPath(baseUrl)
+        mmdLoader.loadAnimation(fileName, modelMesh, (result) => resolve(result as AnimationClip), undefined, reject)
       })
       motionClips.set(motionId, clip)
     }
@@ -230,9 +294,10 @@ const applyPose = async (poseId: string) => {
     let vpd = poseCache.get(poseId)
     if (!vpd) {
       vpd = await new Promise<object>((resolve, reject) => {
+        if (!mmdLoader) return
         const { baseUrl, fileName } = splitFileUrl(pose.vpdUrl)
-        mmdLoader!.setAnimationPath(baseUrl)
-        mmdLoader!.loadVPD(fileName, pose.isUnicode ?? true, resolve, undefined, reject)
+        mmdLoader.setAnimationPath(baseUrl)
+        mmdLoader.loadVPD(fileName, pose.isUnicode ?? true, resolve, undefined, reject)
       })
       poseCache.set(poseId, vpd)
     }
@@ -245,6 +310,23 @@ const applyPose = async (poseId: string) => {
     errorMessage.value = error instanceof Error ? error.message : '姿势加载失败'
   }
 }
+
+// 灯光参数变化同步更新场景
+watch(
+  () => ({ ...lightSettings.value }),
+  async () => {
+    if (!ambientLight || !keyLight || !fillLight) return
+    const THREE = await import('three')
+    ambientLight.intensity = lightSettings.value.ambientIntensity
+    ambientLight.color.set(lightSettings.value.ambientColor)
+    keyLight.intensity = lightSettings.value.keyIntensity
+    keyLight.color.set(lightSettings.value.keyColor)
+    fillLight.intensity = lightSettings.value.fillIntensity
+    fillLight.color.set(lightSettings.value.fillColor)
+    updateLightPositions(THREE)
+  },
+  { deep: true }
+)
 /** 释放 3D 对象资源 */
 const disposeObject = (object: import('three').Object3D) => {
   object.traverse((child) => {
@@ -309,6 +391,9 @@ const disposeThree = () => {
   animationHelper = null
   mmdLoader = null
   clock = null
+  ambientLight = null
+  keyLight = null
+  fillLight = null
   motionClips.clear()
   poseCache.clear()
   isLoaded.value = false
@@ -348,6 +433,133 @@ onBeforeUnmount(() => {
         {{ errorMessage }}
       </div>
     </div>
+
+    <div class="mmd-viewer__controls">
+      <div class="mmd-viewer__control-group">
+        <p class="mmd-viewer__control-label">光线</p>
+        <div class="mmd-viewer__control-grid">
+          <label class="mmd-viewer__control-item">
+            环境强度
+            <input
+              v-model.number="lightSettings.ambientIntensity"
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              :disabled="!isLoaded"
+            />
+          </label>
+          <label class="mmd-viewer__control-item">
+            环境颜色
+            <input v-model="lightSettings.ambientColor" type="color" :disabled="!isLoaded" />
+          </label>
+        </div>
+        <div class="mmd-viewer__control-grid">
+          <label class="mmd-viewer__control-item">
+            主光强度
+            <input
+              v-model.number="lightSettings.keyIntensity"
+              type="range"
+              min="0"
+              max="3"
+              step="0.05"
+              :disabled="!isLoaded"
+            />
+          </label>
+          <label class="mmd-viewer__control-item">
+            主光颜色
+            <input v-model="lightSettings.keyColor" type="color" :disabled="!isLoaded" />
+          </label>
+          <label class="mmd-viewer__control-item">
+            主光方位
+            <input
+              v-model.number="lightSettings.keyAzimuth"
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              :disabled="!isLoaded"
+            />
+          </label>
+          <label class="mmd-viewer__control-item">
+            主光高度
+            <input
+              v-model.number="lightSettings.keyElevation"
+              type="range"
+              min="-10"
+              max="90"
+              step="1"
+              :disabled="!isLoaded"
+            />
+          </label>
+          <label class="mmd-viewer__control-item">
+            主光距离
+            <input
+              v-model.number="lightSettings.keyDistance"
+              type="range"
+              min="6"
+              max="80"
+              step="1"
+              :disabled="!isLoaded"
+            />
+          </label>
+        </div>
+        <div class="mmd-viewer__control-grid">
+          <label class="mmd-viewer__control-item">
+            补光强度
+            <input
+              v-model.number="lightSettings.fillIntensity"
+              type="range"
+              min="0"
+              max="2"
+              step="0.05"
+              :disabled="!isLoaded"
+            />
+          </label>
+          <label class="mmd-viewer__control-item">
+            补光颜色
+            <input v-model="lightSettings.fillColor" type="color" :disabled="!isLoaded" />
+          </label>
+          <label class="mmd-viewer__control-item">
+            补光方位
+            <input
+              v-model.number="lightSettings.fillAzimuth"
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              :disabled="!isLoaded"
+            />
+          </label>
+          <label class="mmd-viewer__control-item">
+            补光高度
+            <input
+              v-model.number="lightSettings.fillElevation"
+              type="range"
+              min="-10"
+              max="90"
+              step="1"
+              :disabled="!isLoaded"
+            />
+          </label>
+          <label class="mmd-viewer__control-item">
+            补光距离
+            <input
+              v-model.number="lightSettings.fillDistance"
+              type="range"
+              min="6"
+              max="80"
+              step="1"
+              :disabled="!isLoaded"
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="ammoStatusMessage" class="mmd-viewer__hint">
+      物理提示：{{ ammoStatusMessage }}
+    </p>
 
     <div v-if="props.model.motions?.length || props.model.poses?.length" class="mmd-viewer__controls">
       <div v-if="props.model.motions?.length" class="mmd-viewer__control-group">
@@ -478,6 +690,29 @@ onBeforeUnmount(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.mmd-viewer__control-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 16px;
+}
+
+.mmd-viewer__control-item {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.mmd-viewer__control-item input[type='range'] {
+  width: 100%;
+}
+
+.mmd-viewer__hint {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .mmd-viewer__placeholder {

@@ -3,16 +3,35 @@ import weaponModel from '../assets/model/miyabi/武器.pmx?url'
 import ornamentModel from '../assets/model/miyabi/幽灵.pmx?url'
 import { splitFileUrl } from '../utils'
 
-console.log('Character Model URL:', characterModel)
-console.log('Weapon Model URL:', weaponModel)
-console.log('Ornament Model URL:', ornamentModel)
+export type MmdMotionConfig = {
+  id: string
+  name: string
+  vmdUrl: string
+}
+
+export type MmdPoseConfig = {
+  id: string
+  name: string
+  vpdUrl: string
+  isUnicode?: boolean
+}
+
+export type MmdSourceInfo = {
+  name: string
+  url: string
+  author?: string
+  note?: string
+}
 
 export type MmdModelConfig = {
-  id: 'character' | 'weapon' | 'ornament'
+  id: string
   name: string
   subtitle: string
   modelUrl: string
   resourcePath?: string
+  motions?: MmdMotionConfig[]
+  poses?: MmdPoseConfig[]
+  source?: MmdSourceInfo
   cameraPosition: [number, number, number]
   cameraTarget: [number, number, number]
   modelScale: number
@@ -31,6 +50,14 @@ export const mmdModels: MmdModelConfig[] = [
     subtitle: '雅小姐写真集绝赞发售中',
     modelUrl: characterModel,
     resourcePath: splitFileUrl(characterModel).baseUrl,
+    source: {
+      name: '模之屋',
+      url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
+      note: '仅用于非商业展示，请遵循原作者许可。',
+    },
+    // 动作与姿势配置示例：后续只需填写 name 与 URL 即可。
+    motions: [],
+    poses: [],
     cameraPosition: [0, 12, 38],
     cameraTarget: [0, 12, 0],
     modelScale: 1,
@@ -43,6 +70,13 @@ export const mmdModels: MmdModelConfig[] = [
     subtitle: '无尾',
     modelUrl: weaponModel,
     resourcePath: splitFileUrl(weaponModel).baseUrl,
+    source: {
+      name: '模之屋',
+      url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
+      note: '仅用于非商业展示，请遵循原作者许可。',
+    },
+    motions: [],
+    poses: [],
     cameraPosition: [0, 10, 32],
     cameraTarget: [0, 10, 0],
     modelScale: 1,
@@ -54,6 +88,13 @@ export const mmdModels: MmdModelConfig[] = [
     subtitle: '只在空洞中现身的鬼火',
     modelUrl: ornamentModel,
     resourcePath: splitFileUrl(ornamentModel).baseUrl,
+    source: {
+      name: '模之屋',
+      url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
+      note: '仅用于非商业展示，请遵循原作者许可。',
+    },
+    motions: [],
+    poses: [],
     cameraPosition: [0, 10, 30],
     cameraTarget: [0, 10, 0],
     modelScale: 1,

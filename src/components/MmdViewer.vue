@@ -1,26 +1,69 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
-import type { OrbitControls } from 'three-stdlib'
+import { onBeforeUnmount, ref } from 'vue'
+import type { MMDAnimationHelper, MMDLoader, OrbitControls } from 'three-stdlib'
+import type { AnimationClip, Clock, SkinnedMesh } from 'three'
 import type { MmdModelConfig } from '../data/mmdModels'
-import { splitFileUrl } from '../utils';
+import { splitFileUrl } from '../utils'
 
 const props = defineProps<{ model: MmdModelConfig }>()
 
-const rootRef = ref<HTMLDivElement | null>(null)
 const stageRef = ref<HTMLDivElement | null>(null)
 const isLoading = ref(false)
 const isLoaded = ref(false)
 const errorMessage = ref<string | null>(null)
+const activeMotionId = ref<string | null>(null)
+const activePoseId = ref<string | null>(null)
 
 let renderer: import('three').WebGLRenderer | null = null
 let scene: import('three').Scene | null = null
 let camera: import('three').PerspectiveCamera | null = null
 let controls: OrbitControls | null = null
 let modelRoot: import('three').Object3D | null = null
+let modelMesh: SkinnedMesh | null = null
+let animationHelper: MMDAnimationHelper | null = null
+let mmdLoader: MMDLoader | null = null
+let clock: Clock | null = null
 let animationFrameId = 0
 let resizeObserver: ResizeObserver | null = null
-let observer: IntersectionObserver | null = null
-let isVisible = true
+const motionClips = new Map<string, AnimationClip>()
+const poseCache = new Map<string, object>()
+
+const getPhysicsEnabled = () => {
+  const hasAmmo = typeof (window as { Ammo?: unknown }).Ammo !== 'undefined'
+  return Boolean(props.model.enablePhysics && hasAmmo)
+}
+
+const applyMmdColorSpaceFix = (root: import('three').Object3D, THREE: typeof import('three')) => {
+  // 避免 MMDLoader 颜色偏白的问题，参考 three.js #28336
+  root.traverse((child) => {
+    const mesh = child as import('three').Mesh
+    const material = (mesh.material ?? null) as import('three').Material | import('three').Material[] | null
+    const excludeEmissiveModifyList = new Set([] as string[])
+    // const excludeEmissiveModifyList = new Set(['白目', '目', '目光', '目光2', '袜', '肌'])
+
+    const applyToMaterial = (mat: import('three').Material) => {
+      const matAny = mat as import('three').Material & {
+        map?: import('three').Texture
+        emissive?: import('three').Color
+        emissiveMap?: import('three').Texture
+        specularMap?: import('three').Texture
+      }
+
+      if (matAny.emissive && !excludeEmissiveModifyList.has(mat.name)) {
+        matAny.emissive.set(0x000000)
+      }
+      if (matAny.map) matAny.map.colorSpace = THREE.SRGBColorSpace
+      if (matAny.emissiveMap) matAny.emissiveMap.colorSpace = THREE.SRGBColorSpace
+      if (matAny.specularMap) matAny.specularMap.colorSpace = THREE.SRGBColorSpace
+    }
+
+    if (Array.isArray(material)) {
+      material.forEach(applyToMaterial)
+    } else if (material) {
+      applyToMaterial(material)
+    }
+  })
+}
 
 const loadModel = async () => {
   if (isLoading.value || isLoaded.value) return
@@ -33,8 +76,9 @@ const loadModel = async () => {
   errorMessage.value = null
 
   try {
+    // 懒加载 three.js 与 MMD 相关模块，避免首屏体积爆炸
     const THREE = await import('three')
-    const { OrbitControls, MMDLoader } = await import('three-stdlib')
+    const { OrbitControls, MMDAnimationHelper, MMDLoader } = await import('three-stdlib')
 
     scene = new THREE.Scene()
 
@@ -81,33 +125,36 @@ const loadModel = async () => {
     resizeObserver.observe(stageRef.value)
     resize()
 
-    const loader = new MMDLoader()
-    ;(loader as { setCrossOrigin?: (value: string) => void }).setCrossOrigin?.('anonymous')
+    // MMDLoader 会根据 resourcePath 解析贴图路径
+    mmdLoader = new MMDLoader()
+    ;(mmdLoader as { setCrossOrigin?: (value: string) => void }).setCrossOrigin?.('anonymous')
 
-    // const baseUrl = props.model.resourcePath ?? props.model.modelUrl.substring(0, props.model.modelUrl.lastIndexOf('/') + 1)
-    // const fileName = props.model.modelUrl.substring(baseUrl.length)
     const { baseUrl, fileName } = splitFileUrl(props.model.modelUrl)
-    loader.setPath(baseUrl)
-    ;(loader as { setResourcePath?: (value: string) => void }).setResourcePath?.(baseUrl)
+    const resourceBase = props.model.resourcePath ?? baseUrl
+    mmdLoader.setPath(baseUrl)
+    ;(mmdLoader as { setResourcePath?: (value: string) => void }).setResourcePath?.(resourceBase)
 
     const loadedModel = await new Promise<import('three').Object3D>((resolve, reject) => {
-      loader.load(fileName, resolve, undefined, reject)
+      mmdLoader?.load(fileName, resolve, undefined, reject)
     })
-
-    if (!isVisible) {
-      disposeThree()
-      return
-    }
 
     loadedModel.scale.setScalar(props.model.modelScale)
     loadedModel.rotation.set(...props.model.modelRotation)
+    applyMmdColorSpaceFix(loadedModel, THREE)
 
     modelRoot = loadedModel
+    modelMesh = loadedModel as SkinnedMesh
+    // AnimationHelper 负责后续的 VMD 动作与物理更新
+    animationHelper = new MMDAnimationHelper({ afterglow: 0.0 })
+    animationHelper.add(modelMesh, { physics: getPhysicsEnabled() })
+    clock = new THREE.Clock()
     scene.add(loadedModel)
 
     const animate = () => {
       if (!renderer || !scene || !camera) return
       animationFrameId = window.requestAnimationFrame(animate)
+      const delta = clock?.getDelta() ?? 0
+      animationHelper?.update(delta)
       controls?.update()
       renderer.render(scene, camera)
     }
@@ -127,14 +174,78 @@ const loadModel = async () => {
 //   if (!controls) return
 //   controls.reset()
 // }
-
+/** 重置镜头 */
 const resetCamera = () => {
   if (!camera || !controls) return
   camera.position.set(...props.model.cameraPosition)
   controls.target.set(...props.model.cameraTarget)
   controls.update()
 }
+/** 清除动画状态, 回到默认姿势 */
+const clearAnimationState = () => {
+  if (!modelMesh || !animationHelper) return
+  animationHelper.remove(modelMesh)
+  animationHelper.add(modelMesh, { physics: getPhysicsEnabled() })
+  modelMesh.pose()
+  activeMotionId.value = null
+  activePoseId.value = null
+}
+/** 变更动作 */
+const applyMotion = async (motionId: string) => {
+  if (!mmdLoader || !modelMesh || !animationHelper) return
+  const motion = props.model.motions?.find((item) => item.id === motionId)
+  if (!motion) return
 
+  activePoseId.value = null
+  activeMotionId.value = motionId
+
+  try {
+    let clip = motionClips.get(motionId)
+    if (!clip) {
+      clip = await new Promise<AnimationClip>((resolve, reject) => {
+        const { baseUrl, fileName } = splitFileUrl(motion.vmdUrl)
+        mmdLoader!.setAnimationPath(baseUrl)
+        mmdLoader!.loadAnimation(fileName, modelMesh!, (result) => resolve(result as AnimationClip), undefined, reject)
+      })
+      motionClips.set(motionId, clip)
+    }
+
+    animationHelper.remove(modelMesh)
+    animationHelper.add(modelMesh, { animation: clip, physics: getPhysicsEnabled() })
+  } catch (error) {
+    activeMotionId.value = null
+    errorMessage.value = error instanceof Error ? error.message : '动作加载失败'
+  }
+}
+/** 变更姿势 */
+const applyPose = async (poseId: string) => {
+  if (!mmdLoader || !modelMesh || !animationHelper) return
+  const pose = props.model.poses?.find((item) => item.id === poseId)
+  if (!pose) return
+
+  activeMotionId.value = null
+  activePoseId.value = poseId
+
+  try {
+    let vpd = poseCache.get(poseId)
+    if (!vpd) {
+      vpd = await new Promise<object>((resolve, reject) => {
+        const { baseUrl, fileName } = splitFileUrl(pose.vpdUrl)
+        mmdLoader!.setAnimationPath(baseUrl)
+        mmdLoader!.loadVPD(fileName, pose.isUnicode ?? true, resolve, undefined, reject)
+      })
+      poseCache.set(poseId, vpd)
+    }
+
+    animationHelper.remove(modelMesh)
+    animationHelper.add(modelMesh, { physics: getPhysicsEnabled() })
+    animationHelper.pose(modelMesh, vpd, { resetPose: true })
+  } catch (error) {
+    activePoseId.value = null
+    errorMessage.value = error instanceof Error ? error.message : '姿势加载失败'
+  }
+}
+/** 释放 3D 对象资源 */
 const disposeObject = (object: import('three').Object3D) => {
   object.traverse((child) => {
     const mesh = child as import('three').Mesh
@@ -142,10 +253,7 @@ const disposeObject = (object: import('three').Object3D) => {
       mesh.geometry.dispose()
     }
 
-    const material = (mesh.material ?? null) as
-      | import('three').Material
-      | import('three').Material[]
-      | null
+    const material = (mesh.material ?? null) as import('three').Material | import('three').Material[] | null
 
     if (Array.isArray(material)) {
       material.forEach(disposeMaterial)
@@ -154,7 +262,7 @@ const disposeObject = (object: import('three').Object3D) => {
     }
   })
 }
-
+/** 释放材质资源 */
 const disposeMaterial = (material: import('three').Material) => {
   const materialAny = material as unknown as Record<string, unknown>
   Object.values(materialAny).forEach((value) => {
@@ -165,7 +273,7 @@ const disposeMaterial = (material: import('three').Material) => {
   })
   material.dispose()
 }
-
+/** 卸载, 释放 Three.js 相关资源 */
 const disposeThree = () => {
   if (animationFrameId) {
     window.cancelAnimationFrame(animationFrameId)
@@ -176,6 +284,10 @@ const disposeThree = () => {
     scene.remove(modelRoot)
     disposeObject(modelRoot)
     modelRoot = null
+  }
+
+  if (modelMesh && animationHelper) {
+    animationHelper.remove(modelMesh)
   }
 
   controls?.dispose()
@@ -193,34 +305,25 @@ const disposeThree = () => {
   renderer = null
   scene = null
   camera = null
+  modelMesh = null
+  animationHelper = null
+  mmdLoader = null
+  clock = null
+  motionClips.clear()
+  poseCache.clear()
   isLoaded.value = false
   isLoading.value = false
+  activeMotionId.value = null
+  activePoseId.value = null
 }
-
-const unloadIfHidden = (entries: IntersectionObserverEntry[]) => {
-  const [entry] = entries
-  if (!entry) return
-  isVisible = entry.isIntersecting
-  if (!isVisible && isLoaded.value) {
-    disposeThree()
-  }
-}
-
-onMounted(() => {
-  if (!rootRef.value || typeof IntersectionObserver === 'undefined') return
-  observer = new IntersectionObserver(unloadIfHidden, { threshold: 0.2 })
-  observer.observe(rootRef.value)
-})
 
 onBeforeUnmount(() => {
   disposeThree()
-  observer?.disconnect()
-  observer = null
 })
 </script>
 
 <template>
-  <section ref="rootRef" class="mmd-viewer">
+  <section class="mmd-viewer">
     <header class="mmd-viewer__header">
       <!-- <div>
         <p class="mmd-viewer__title">{{ props.model.name }}</p>
@@ -245,6 +348,59 @@ onBeforeUnmount(() => {
         {{ errorMessage }}
       </div>
     </div>
+
+    <div v-if="props.model.motions?.length || props.model.poses?.length" class="mmd-viewer__controls">
+      <div v-if="props.model.motions?.length" class="mmd-viewer__control-group">
+        <p class="mmd-viewer__control-label">动作</p>
+        <div class="mmd-viewer__control-buttons">
+          <button
+            class="mmd-button mmd-button--ghost"
+            type="button"
+            :class="{ 'mmd-button--active': !activeMotionId && !activePoseId }"
+            :disabled="!isLoaded || isLoading"
+            @click="clearAnimationState"
+          >
+            静止
+          </button>
+          <button
+            v-for="motion in props.model.motions"
+            :key="motion.id"
+            class="mmd-button mmd-button--ghost"
+            type="button"
+            :class="{ 'mmd-button--active': activeMotionId === motion.id }"
+            :disabled="!isLoaded || isLoading"
+            @click="applyMotion(motion.id)"
+          >
+            {{ motion.name }}
+          </button>
+        </div>
+      </div>
+
+      <div v-if="props.model.poses?.length" class="mmd-viewer__control-group">
+        <p class="mmd-viewer__control-label">姿势</p>
+        <div class="mmd-viewer__control-buttons">
+          <button
+            v-for="pose in props.model.poses"
+            :key="pose.id"
+            class="mmd-button mmd-button--ghost"
+            type="button"
+            :class="{ 'mmd-button--active': activePoseId === pose.id }"
+            :disabled="!isLoaded || isLoading"
+            @click="applyPose(pose.id)"
+          >
+            {{ pose.name }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <p v-if="props.model.source" class="mmd-viewer__source">
+      来源：
+      <a :href="props.model.source.url" target="_blank" rel="noopener noreferrer">
+        {{ props.model.source.name }}
+      </a>
+      <span v-if="props.model.source.note" class="mmd-viewer__source-note">{{ props.model.source.note }}</span>
+    </p>
   </section>
 </template>
 
@@ -285,7 +441,8 @@ onBeforeUnmount(() => {
   position: relative;
   min-height: clamp(320px, 60vh, 620px);
   border-radius: 24px;
-  background: radial-gradient(circle at 20% 20%, rgba(87, 171, 168, 0.18), transparent 50%),
+  background:
+    radial-gradient(circle at 20% 20%, rgba(87, 171, 168, 0.18), transparent 50%),
     linear-gradient(150deg, rgba(15, 26, 32, 0.9), rgba(6, 12, 14, 0.95));
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
@@ -295,6 +452,32 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.mmd-viewer__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mmd-viewer__control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mmd-viewer__control-label {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(249, 225, 154, 0.9);
+}
+
+.mmd-viewer__control-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .mmd-viewer__placeholder {
@@ -342,7 +525,10 @@ onBeforeUnmount(() => {
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
-  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease;
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    opacity 180ms ease;
 }
 
 .mmd-button:disabled {
@@ -358,6 +544,28 @@ onBeforeUnmount(() => {
 .mmd-button--ghost {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.24);
+}
+
+.mmd-button--active {
+  border-color: rgba(87, 171, 168, 0.7);
+  box-shadow: 0 0 0 1px rgba(87, 171, 168, 0.35);
+}
+
+.mmd-viewer__source {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.mmd-viewer__source a {
+  color: var(--text-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.mmd-viewer__source-note {
+  margin-left: 8px;
+  opacity: 0.8;
 }
 
 @media (max-width: 720px) {

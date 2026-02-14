@@ -22,9 +22,13 @@ import { mmdModels } from '../data/mmdModels'
 
 <style>
 .view3d-section {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  /* display: grid; */
+  /* grid-template-columns: minmax(0, 1fr); */
+  display: flex;
+  flex-direction: column;
   gap: 26px;
+  height: 100%;
+  overflow: hidden;
 }
 
 .view3d-section__intro {

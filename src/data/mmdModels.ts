@@ -52,7 +52,7 @@ export const mmdModels: MmdModelConfig[] = [
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
-      note: '仅用于非商业展示，请遵循原作者许可。',
+      note: '仅用于非商业展示，请遵循原作者许可',
     },
     // 动作与姿势配置示例：后续只需填写 name 与 URL 即可。
     motions: [],
@@ -73,7 +73,7 @@ export const mmdModels: MmdModelConfig[] = [
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
-      note: '仅用于非商业展示，请遵循原作者许可。',
+      note: '仅用于非商业展示，请遵循原作者许可',
     },
     motions: [],
     poses: [],
@@ -92,7 +92,7 @@ export const mmdModels: MmdModelConfig[] = [
     source: {
       name: '模之屋',
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
-      note: '仅用于非商业展示，请遵循原作者许可。',
+      note: '仅用于非商业展示，请遵循原作者许可',
     },
     motions: [],
     poses: [],

@@ -63,6 +63,7 @@ onBeforeUnmount(() => {
 }
 
 .page-section__content {
+  /* height: 100%; */
   width: min(1280px, 100%);
 }
 

@@ -155,6 +155,7 @@ const applyMmdColorSpaceFix = (root: import('three').Object3D, THREE: typeof imp
   })
 }
 
+/** 角色鉴赏模式缩放时镜头控制 */
 const clampZoomAlongForward = (delta: number) => {
   if (!camera || !cameraForward || !modelRoot || !threeModule) return
   const forward = cameraForward.clone().normalize()
@@ -194,6 +195,13 @@ const updateOrbitTarget = () => {
 
 const applyInteractionMode = (mode: 'character' | 'orbit') => {
   if (!renderer || !camera) return
+  if (animationHelper) {
+    // 避免重复 add/remove 造成物理拉扯，改为临时关闭物理后再恢复。
+    animationHelper.enable('physics', false)
+    sleep(500).then(() => {
+      if (animationHelper && getPhysicsEnabled()) animationHelper.enable('physics', true)
+    })
+  }
 
   // 切换模式时必须先清理旧监听，避免重复绑定。
   detachPointerControls?.()
@@ -348,6 +356,7 @@ const loadModel = async () => {
     cameraYOffset = 0
 
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    renderer.setSize(stageRef.value.clientWidth, stageRef.value.clientHeight, false)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -358,7 +367,10 @@ const loadModel = async () => {
 
     const resize = () => {
       if (!stageRef.value || !camera || !renderer) return
-      const { width, height } = stageRef.value.getBoundingClientRect()
+      // const { width, height } = stageRef.value.getBoundingClientRect()
+      // console.log('resize', width, height)
+      // console.log('stageRef', stageRef.value.clientWidth, stageRef.value.clientHeight)
+      const [width, height] = [stageRef.value.clientWidth, stageRef.value.clientHeight]
       const nextHeight = Math.max(height, 1)
       camera.aspect = width / nextHeight
       camera.updateProjectionMatrix()
@@ -645,6 +657,23 @@ onBeforeUnmount(() => {
         <p class="mmd-viewer__title">{{ props.model.name }}</p>
         <p class="mmd-viewer__subtitle">{{ props.model.subtitle }}</p>
       </div> -->
+    </header>
+
+    <div ref="stageRef" class="mmd-viewer__stage">
+      <div v-if="!isLoaded" class="mmd-viewer__placeholder">
+        <p class="mmd-viewer__placeholder-title">点击下方按钮加载模型</p>
+        <p class="mmd-viewer__placeholder-text">模型和贴图的加载需要一点时间...</p>
+        <button class="mmd-button" type="button" :disabled="isLoading" @click="loadModel">
+          {{ isLoading ? '加载中…' : '加载模型' }}
+        </button>
+        <!-- <p class="mmd-viewer__placeholder-hint">支持拖拽旋转，滚轮/双指缩放</p> -->
+      </div>
+      <div v-if="errorMessage" class="mmd-viewer__error">
+        {{ errorMessage }}
+      </div>
+    </div>
+
+    <div class="mmd-viewer__controls">
       <div v-if="isLoaded" class="mmd-viewer__actions">
         <button class="mmd-button" type="button" @click="resetScene">初始状态</button>
         <div class="mmd-viewer__mode-toggle">
@@ -676,24 +705,8 @@ onBeforeUnmount(() => {
           </button>
         </div>
       </div>
-    </header>
-
-    <div ref="stageRef" class="mmd-viewer__stage">
-      <div v-if="!isLoaded" class="mmd-viewer__placeholder">
-        <p class="mmd-viewer__placeholder-title">点击下方按钮加载模型</p>
-        <p class="mmd-viewer__placeholder-text">模型和贴图的加载需要一点时间...</p>
-        <button class="mmd-button" type="button" :disabled="isLoading" @click="loadModel">
-          {{ isLoading ? '加载中…' : '加载模型' }}
-        </button>
-        <!-- <p class="mmd-viewer__placeholder-hint">支持拖拽旋转，滚轮/双指缩放</p> -->
-      </div>
-      <div v-if="errorMessage" class="mmd-viewer__error">
-        {{ errorMessage }}
-      </div>
-    </div>
-
-    <div class="mmd-viewer__controls">
-      <div class="mmd-viewer__control-group">
+      <p v-if="ammoStatusMessage" class="mmd-viewer__hint">物理提示：{{ ammoStatusMessage }}</p>
+      <!-- <div class="mmd-viewer__control-group">
         <p class="mmd-viewer__control-label">光线</p>
         <div class="mmd-viewer__control-grid">
           <label class="mmd-viewer__control-item">
@@ -812,10 +825,8 @@ onBeforeUnmount(() => {
             />
           </label>
         </div>
-      </div>
+      </div> -->
     </div>
-
-    <p v-if="ammoStatusMessage" class="mmd-viewer__hint">物理提示：{{ ammoStatusMessage }}</p>
 
     <div v-if="props.model.motions?.length || props.model.poses?.length" class="mmd-viewer__controls">
       <div v-if="props.model.motions?.length" class="mmd-viewer__control-group">
@@ -868,16 +879,19 @@ onBeforeUnmount(() => {
         {{ props.model.source.name }}
       </a>
       <span v-if="props.model.source.note" class="mmd-viewer__source-note">{{ props.model.source.note }}</span>
+      ; 光照调整功能尚有问题，暂时隐藏相关控制项，待后续更新
     </p>
   </section>
 </template>
 
 <style>
 .mmd-viewer {
+  flex-grow: 1;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
   width: 100%;
+  overflow: hidden;
 }
 
 .mmd-viewer__header {
@@ -914,8 +928,9 @@ onBeforeUnmount(() => {
 }
 
 .mmd-viewer__stage {
+  flex-grow: 1;
   position: relative;
-  min-height: clamp(320px, 60vh, 620px);
+  min-height: clamp(320px, 50vh, 620px);
   border-radius: 24px;
   background:
     radial-gradient(circle at 20% 20%, rgba(87, 171, 168, 0.18), transparent 50%),
@@ -927,7 +942,7 @@ onBeforeUnmount(() => {
 
 .mmd-viewer__stage canvas {
   width: 100%;
-  height: 100%;
+  /* height: 100%; */
   display: block;
 }
 
@@ -935,6 +950,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 40px;
 }
 
 .mmd-viewer__control-group {

@@ -8,9 +8,14 @@
         <div class="footer-section__chip">TapTap</div>
         <div class="footer-section__chip">HoYoLab</div>
       </div>
+      <AttributionPanel />
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import AttributionPanel from '../../components/AttributionPanel.vue'
+</script>
 
 <style>
 .footer-section {
@@ -25,6 +30,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  align-items: center;
 }
 
 .footer-section__content h2 {

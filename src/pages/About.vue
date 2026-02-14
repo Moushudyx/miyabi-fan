@@ -1,9 +1,14 @@
+<script setup lang="ts">
+import AttributionPanel from '../components/AttributionPanel.vue'
+</script>
+
 <template>
   <div class="about-page">
     <div class="about-page__card">
       <h1>关于</h1>
       <p>这里是关于页的占位内容，后续会补充项目介绍与制作名单。</p>
     </div>
+    <AttributionPanel />
   </div>
 </template>
 
@@ -11,6 +16,7 @@
 .about-page {
   min-height: calc(100vh - 72px);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 48px 6vw;
@@ -24,6 +30,9 @@
   background: rgba(15, 18, 30, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .about-page__card h1 {

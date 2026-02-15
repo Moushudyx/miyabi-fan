@@ -1,7 +1,3 @@
-<script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-</script>
-
 <template>
   <div class="app-shell">
     <header class="site-header">
@@ -10,13 +6,13 @@ import { RouterLink, RouterView } from 'vue-router'
         <span class="logo-sub">星见雅 Fan Site</span>
       </div>
       <nav class="site-header__nav" aria-label="主导航">
-        <RouterLink to="/" class="nav-link">首页</RouterLink>
-        <RouterLink to="/view3d" class="nav-link">鉴赏</RouterLink>
-        <RouterLink to="/about" class="nav-link">关于</RouterLink>
+        <NuxtLink to="/" class="nav-link" exact-active-class="nav-link--active">首页</NuxtLink>
+        <NuxtLink to="/view3d" class="nav-link" exact-active-class="nav-link--active">鉴赏</NuxtLink>
+        <NuxtLink to="/about" class="nav-link" exact-active-class="nav-link--active">关于</NuxtLink>
       </nav>
     </header>
     <main class="site-main">
-      <RouterView />
+      <NuxtPage />
     </main>
   </div>
 </template>
@@ -76,7 +72,7 @@ import { RouterLink, RouterView } from 'vue-router'
     opacity 200ms ease;
 }
 
-.nav-link.router-link-active {
+.nav-link--active {
   border-color: var(--primary-1);
 }
 

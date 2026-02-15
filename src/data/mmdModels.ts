@@ -1,4 +1,4 @@
-const baseUrl = `${import.meta.env.BASE_URL}model/miyabi/`
+import { useRuntimeConfig } from '#imports'
 
 export type MmdMotionConfig = {
   id: string
@@ -41,7 +41,7 @@ export type MmdModelConfig = {
 
 // const cdnBase = 'https://cdn.jsdelivr.net/gh/yourname/yourrepo@v1/miyabi/'
 
-export const mmdModels: MmdModelConfig[] = [
+const createMmdModels = (baseUrl: string): MmdModelConfig[] => [
   {
     id: 'character',
     name: '星见雅',
@@ -54,7 +54,7 @@ export const mmdModels: MmdModelConfig[] = [
       url: 'https://www.aplaybox.com/details/model/UeIhHCMfZfBm',
       note: '仅用于非商业展示，请遵循原作者许可',
     },
-    // 动作与姿势配置示例：后续只需填写 name 与 URL 即可。
+    // 动作与姿势配置示例：后续只需填写 name 与 URL 即可
     motions: [],
     poses: [],
     cameraPosition: [0, 12, 38],
@@ -102,3 +102,9 @@ export const mmdModels: MmdModelConfig[] = [
     modelRotation: [0, 0, 0],
   },
 ]
+
+export const useMmdModels = () => {
+  console.log('Loading MMD models with base URL:', useRuntimeConfig().public.baseURL)
+  const baseUrl = `${useRuntimeConfig().public.baseURL ?? '/'}model/miyabi/`
+  return createMmdModels(baseUrl)
+}

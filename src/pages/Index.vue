@@ -1,10 +1,21 @@
 <script setup lang="ts">
+import { useHead } from '#imports'
 import PageSection from '../components/PageSection.vue'
 import PageSlider from '../components/PageSlider.vue'
 import FanWorksSection from './Index/FanWorksSection.vue'
 import FooterSection from './Index/FooterSection.vue'
 import HeroSection from './Index/HeroSection.vue'
 import OfficalInfoSection from './Index/OfficalInfoSection.vue'
+
+useHead({
+  title: '首页 | 星见雅 Fan Site',
+  meta: [
+    {
+      name: 'description',
+      content: '星见雅角色同人站首页，包含视觉展示、同人作品与官方情报',
+    },
+  ],
+})
 </script>
 
 <template>

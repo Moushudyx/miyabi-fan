@@ -16,7 +16,7 @@ const isPointer = ref(false)
 let mediaQuery: MediaQueryList | null = null
 
 /**
- * 标记当前设备是否支持鼠标指针，用于区分 hover 与 click 行为。
+ * 标记当前设备是否支持鼠标指针，用于区分 hover 与 click 行为
  */
 const detectPointer = () => {
   if (typeof window === 'undefined') return
@@ -25,7 +25,7 @@ const detectPointer = () => {
 }
 
 /**
- * 监听指针能力变化，适配可插拔设备。
+ * 监听指针能力变化，适配可插拔设备
  */
 const handlePointerChange = () => {
   if (!mediaQuery) return
@@ -33,7 +33,7 @@ const handlePointerChange = () => {
 }
 
 /**
- * 兼容旧版浏览器的媒体查询监听。
+ * 兼容旧版浏览器的媒体查询监听
  */
 const bindMediaQueryListener = () => {
   if (!mediaQuery) return
@@ -41,7 +41,7 @@ const bindMediaQueryListener = () => {
 }
 
 /**
- * 清理媒体查询监听。
+ * 清理媒体查询监听
  */
 const unbindMediaQueryListener = () => {
   if (!mediaQuery) return
@@ -49,14 +49,14 @@ const unbindMediaQueryListener = () => {
 }
 
 /**
- * 设置展开的作品索引。
+ * 设置展开的作品索引
  */
 const setActive = (index: number) => {
   activeIndex.value = index
 }
 
 /**
- * 根据交互类型更新展开的作品。
+ * 根据交互类型更新展开的作品
  */
 const activateByInteraction = (index: number, mode: 'hover' | 'click') => {
   if (mode === 'hover' && !isPointer.value) return

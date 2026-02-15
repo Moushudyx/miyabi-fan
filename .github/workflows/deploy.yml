@@ -40,13 +40,15 @@ jobs:
       - name: 📦 Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: 🏗️ Build
-        run: pnpm build
+      - name: 🏗️ Generate
+        run: pnpm generate
+        env:
+          NUXT_APP_BASE_URL: /miyabi-fan/
 
       - name: 🚀 Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: .output/public
 
   deploy:
     needs: build

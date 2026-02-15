@@ -19,21 +19,21 @@ const activateByInteraction = inject('fanWorksActivateByInteraction') as (
 const isActive = computed(() => activeIndex?.value === props.index)
 
 /**
- * 鼠标划过时展开当前作品。
+ * 鼠标划过时展开当前作品
  */
 const handleHover = () => {
   activateByInteraction?.(props.index, 'hover')
 }
 
 /**
- * 点击时展开当前作品（移动端优先）。
+ * 点击时展开当前作品（移动端优先）
  */
 const handleClick = () => {
   activateByInteraction?.(props.index, 'click')
 }
 
 /**
- * 键盘操作时展开当前作品。
+ * 键盘操作时展开当前作品
  */
 const handleKeyToggle = () => {
   activateByInteraction?.(props.index, 'click')

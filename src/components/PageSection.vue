@@ -12,7 +12,7 @@ const hasEntered = ref(false)
 let observer: IntersectionObserver | null = null
 
 /**
- * 初始化可视区域监听，只触发一次进入动画。
+ * 初始化可视区域监听，只触发一次进入动画
  */
 const initObserver = () => {
   if (!sectionRef.value || typeof IntersectionObserver === 'undefined') {

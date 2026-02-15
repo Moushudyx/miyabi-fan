@@ -94,7 +94,7 @@ const ensureAmmo = async () => {
     }
   } catch (error) {
     isAmmoReady.value = false
-    ammoStatusMessage.value = error instanceof Error ? error.message : 'Ammo.js 加载失败，物理已关闭。'
+    ammoStatusMessage.value = error instanceof Error ? error.message : 'Ammo.js 加载失败，物理已关闭'
   }
 }
 
@@ -196,14 +196,14 @@ const updateOrbitTarget = () => {
 const applyInteractionMode = (mode: 'character' | 'orbit') => {
   if (!renderer || !camera) return
   if (animationHelper) {
-    // 避免重复 add/remove 造成物理拉扯，改为临时关闭物理后再恢复。
+    // 避免重复 add/remove 造成物理拉扯，改为临时关闭物理后再恢复
     animationHelper.enable('physics', false)
     sleep(500).then(() => {
       if (animationHelper && getPhysicsEnabled()) animationHelper.enable('physics', true)
     })
   }
 
-  // 切换模式时必须先清理旧监听，避免重复绑定。
+  // 切换模式时必须先清理旧监听，避免重复绑定
   detachPointerControls?.()
   orbitControls?.dispose()
   orbitControls = null
@@ -410,7 +410,7 @@ const loadModel = async () => {
     // AnimationHelper 负责后续的 VMD 动作与物理更新
     animationHelper = new MMDAnimationHelper({ afterglow: 0.0 })
     if (props.model.enablePhysics) {
-      // 物理依赖 Ammo.js，按需加载。
+      // 物理依赖 Ammo.js，按需加载
       await ensureAmmo()
     }
     animationHelper.add(modelMesh, { physics: getPhysicsEnabled() })
@@ -464,7 +464,7 @@ const resetCameraView = () => {
 const resetScene = () => {
   resetCameraView()
   if (modelMesh && animationHelper) {
-    // 避免重复 add/remove 造成物理拉扯，改为临时关闭物理后再恢复。
+    // 避免重复 add/remove 造成物理拉扯，改为临时关闭物理后再恢复
     animationHelper.enable('physics', false)
     modelMesh.pose()
     activeMotionId.value = null
@@ -498,7 +498,7 @@ const applyMotion = async (motionId: string) => {
     if (!clip) {
       clip = await new Promise<AnimationClip>((resolve, reject) => {
         if (!mmdLoader || !modelMesh) {
-          reject(new Error('动作加载已中断。'))
+          reject(new Error('动作加载已中断'))
           return
         }
         const { baseUrl, fileName } = splitFileUrl(motion.vmdUrl)
@@ -529,7 +529,7 @@ const applyPose = async (poseId: string) => {
     if (!vpd) {
       vpd = await new Promise<object>((resolve, reject) => {
         if (!mmdLoader) {
-          reject(new Error('姿势加载已中断。'))
+          reject(new Error('姿势加载已中断'))
           return
         }
         const { baseUrl, fileName } = splitFileUrl(pose.vpdUrl)

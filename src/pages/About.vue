@@ -1,12 +1,23 @@
 <script setup lang="ts">
+import { useHead } from '#imports'
 import AttributionPanel from '../components/AttributionPanel.vue'
+
+useHead({
+  title: '关于 | 星见雅 Fan Site',
+  meta: [
+    {
+      name: 'description',
+      content: '关于星见雅同人站的介绍与制作信息',
+    },
+  ],
+})
 </script>
 
 <template>
   <div class="about-page">
     <div class="about-page__card">
       <h1>关于</h1>
-      <p>这里是关于页的占位内容，后续会补充项目介绍与制作名单。</p>
+      <p>这里是关于页的占位内容，后续会补充项目介绍与制作名单</p>
     </div>
     <AttributionPanel />
   </div>

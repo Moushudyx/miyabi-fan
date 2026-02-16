@@ -1,3 +1,4 @@
+<!-- 首页同人作品推荐 -->
 <script setup lang="ts">
 import FanWorkItem from '../../components/FanWorkItem.vue'
 import FanWorksGallery from '../../components/FanWorksGallery.vue'

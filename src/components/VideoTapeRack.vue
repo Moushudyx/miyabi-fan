@@ -1,3 +1,4 @@
+<!-- 组件 以录像带风格排布新闻/文章项的容器, 抽出和收回动画由子组件实现, 需搭配 VideoTapeItem 使用 -->
 <script setup lang="ts">
 import { computed, provide, ref } from 'vue'
 

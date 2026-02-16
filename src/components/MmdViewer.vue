@@ -1,3 +1,4 @@
+<!-- 组件 调用 three.js 渲染 MMD 格式的 3D 模型, 传入的内容格式参考 MmdModelConfig -->
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import type { MMDAnimationHelper, MMDLoader, OrbitControls as OrbitControlsType } from 'three-stdlib'
@@ -884,7 +885,7 @@ onBeforeUnmount(() => {
   </section>
 </template>
 
-<style>
+<style lang="scss">
 .mmd-viewer {
   flex-grow: 1;
   display: flex;

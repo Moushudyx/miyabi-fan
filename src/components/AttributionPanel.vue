@@ -9,7 +9,7 @@
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .attribution-panel {
   width: min(720px, 100%);
   padding: 12px 16px;

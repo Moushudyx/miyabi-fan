@@ -1,3 +1,4 @@
+<!-- 首页官方信息与周边 -->
 <script setup lang="ts">
 import VideoTapeItem from '../../components/VideoTapeItem.vue'
 import VideoTapeRack from '../../components/VideoTapeRack.vue'
@@ -42,7 +43,7 @@ import VideoTapeRack from '../../components/VideoTapeRack.vue'
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .official-section {
   display: flex;
   flex-direction: column;

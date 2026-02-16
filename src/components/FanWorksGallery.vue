@@ -1,3 +1,4 @@
+<!-- 组件 同人作品集, 需搭配 FanWorkItem 使用 -->
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue'
 

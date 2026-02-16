@@ -1,3 +1,4 @@
+<!-- 首页底部 -->
 <template>
   <div class="footer-section">
     <div class="footer-section__content" data-reveal data-delay="1">
@@ -17,7 +18,7 @@
 import AttributionPanel from '../../components/AttributionPanel.vue'
 </script>
 
-<style>
+<style lang="scss">
 .footer-section {
   display: flex;
   align-items: center;

@@ -1,3 +1,4 @@
+<!-- 组件 页面滑动容器, 支持水平和垂直滑动, 纵向滑动需搭配 PageSection 使用 -->
 <script setup lang="ts">
 import { computed } from 'vue'
 

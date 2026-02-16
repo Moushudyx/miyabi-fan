@@ -1,3 +1,4 @@
+<!-- 组件 同人作品集中的一项, 需搭配 FanWorksGallery 使用 -->
 <script setup lang="ts">
 import { computed, inject, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { FanWork } from '../data/fanWorks'

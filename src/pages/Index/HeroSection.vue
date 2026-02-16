@@ -1,3 +1,4 @@
+<!-- 首页顶部(第一屏) -->
 <template>
   <div class="hero-section">
     <div class="hero-section__copy" data-reveal data-delay="1">
@@ -17,7 +18,7 @@
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .hero-section {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

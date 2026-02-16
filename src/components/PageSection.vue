@@ -1,3 +1,4 @@
+<!-- 组件 页面纵向滑动容器中的一项, 需搭配 PageSlider 使用 -->
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 

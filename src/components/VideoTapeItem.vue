@@ -1,3 +1,4 @@
+<!-- 组件 以录像带风格排布新闻/文章项, 包括抽出和收回动画, 需搭配 VideoTapeRack 使用 -->
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue'
 

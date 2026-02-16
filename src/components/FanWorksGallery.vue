@@ -88,10 +88,10 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .fan-works-gallery {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
   height: min(420px, 60vh);
 }

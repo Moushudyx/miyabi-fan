@@ -14,14 +14,14 @@ const props = withDefaults(defineProps<Props>(), {
 const activeIndex = ref(props.defaultActive)
 
 /**
- * 设置抽出的录像带索引，重复点击可收回。
+ * 设置抽出的录像带索引，重复点击可收回
  */
 const toggleActive = (index: number) => {
   activeIndex.value = activeIndex.value === index ? -1 : index
 }
 
 /**
- * 关闭当前抽出的录像带。
+ * 关闭当前抽出的录像带
  */
 const closeActive = () => {
   activeIndex.value = -1
@@ -46,7 +46,7 @@ const isOpen = computed(() => activeIndex.value >= 0)
   </section>
 </template>
 
-<style>
+<style lang="scss">
 .video-tape-rack {
   display: flex;
   flex-direction: column;

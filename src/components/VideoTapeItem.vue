@@ -25,7 +25,7 @@ const isFloating = computed(() => isExpanded.value || isClosing.value)
 const showFront = computed(() => isExpanded.value || isClosing.value)
 
 /**
- * 根据原位置计算抽出/放回的位移量。
+ * 根据原位置计算抽出/放回的位移量
  */
 const setOffsetFromRect = (rect: DOMRect) => {
   const centerX = window.innerWidth / 2
@@ -35,7 +35,7 @@ const setOffsetFromRect = (rect: DOMRect) => {
 }
 
 /**
- * 抽出录像带，先记录位置，再过渡到屏幕中央。
+ * 抽出录像带，先记录位置，再过渡到屏幕中央
  */
 const openTape = async () => {
   if (!itemRef.value) return
@@ -53,7 +53,7 @@ const openTape = async () => {
 }
 
 /**
- * 放回录像带，回到记录的原位，再结束状态。
+ * 放回录像带，回到记录的原位，再结束状态
  */
 const closeTape = () => {
   if (!originRect.value) {
@@ -75,21 +75,21 @@ const closeTape = () => {
 }
 
 /**
- * 点击抽出或收回录像带。
+ * 点击抽出或收回录像带
  */
 const handleToggle = () => {
   toggleActive?.(props.index)
 }
 
 /**
- * 键盘触发抽出或收回录像带。
+ * 键盘触发抽出或收回录像带
  */
 const handleKeyToggle = () => {
   toggleActive?.(props.index)
 }
 
 /**
- * 动画完成后结束收回状态。
+ * 动画完成后结束收回状态
  */
 const handleTransitionEnd = (event: TransitionEvent) => {
   if (event.propertyName !== 'transform') return
@@ -147,7 +147,7 @@ watch(
   </article>
 </template>
 
-<style>
+<style lang="scss">
 @property --tape-width {
   syntax: '<length>';
   inherits: true;

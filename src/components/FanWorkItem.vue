@@ -18,6 +18,16 @@ const activateByInteraction = inject('fanWorksActivateByInteraction') as (
 
 const isActive = computed(() => activeIndex?.value === props.index)
 
+const isSmallScreen = ref(false)
+
+onMounted(() => {
+  const checkScreenSize = () => {
+    isSmallScreen.value = window.innerWidth <= 840
+  }
+  checkScreenSize()
+  window.addEventListener('resize', checkScreenSize)
+})
+
 /**
  * 鼠标划过时展开当前作品
  */
@@ -57,19 +67,23 @@ const handleKeyToggle = () => {
     </div>
     <div class="fan-work-item__media" :aria-hidden="!isActive">
       <slot />
+    <template v-if="isActive">
+      <slot name="media-mobile" v-if="$slots['media-mobile'] && isSmallScreen" />
+      <slot v-else />
+    </template>
     </div>
-    <div class="fan-work-item__info" v-if="isActive">
+    <div class="fan-work-item__info" :style="{ opacity: isActive ? 1 : 0 }">
       <slot name="info" />
     </div>
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .fan-work-item {
   position: relative;
   flex: 1;
-  min-width: 120px;
-  border-radius: 18px;
+  min-width: 96px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--surface-3);
   transition:
@@ -102,11 +116,12 @@ const handleKeyToggle = () => {
 
 .fan-work-item__media {
   opacity: 0;
-  transition: opacity 300ms ease;
+  transition: opacity 240ms ease;
 }
 
 .fan-work-item.is-active .fan-work-item__media {
   opacity: 1;
+  transition: opacity 120ms ease;
 }
 
 .fan-work-item__info {
@@ -118,6 +133,8 @@ const handleKeyToggle = () => {
   background: rgba(6, 12, 14, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(8px);
+  // opacity: 0;
+  transition: opacity 240ms ease;
 }
 
 .fan-works-gallery--column .fan-work-item {
@@ -131,7 +148,7 @@ const handleKeyToggle = () => {
 
 @media (max-width: 840px) {
   .fan-work-item {
-    min-height: 120px;
+    min-height: 96px;
     height: 120px;
     flex: none;
   }

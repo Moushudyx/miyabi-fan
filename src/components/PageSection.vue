@@ -51,7 +51,7 @@ onBeforeUnmount(() => {
   </section>
 </template>
 
-<style>
+<style lang="scss">
 .page-section {
   height: 100vh;
   scroll-snap-align: start;

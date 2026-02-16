@@ -18,7 +18,7 @@ const axisClass = computed(() => (props.axis === 'x' ? 'page-slider--horizontal'
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .page-slider {
   height: 100vh;
   overflow: auto;

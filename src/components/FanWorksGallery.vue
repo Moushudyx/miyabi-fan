@@ -105,7 +105,9 @@ onBeforeUnmount(() => {
 @media (max-width: 840px) {
   .fan-works-gallery {
     flex-direction: column;
-    height: calc(100vh - 120px - 60px - 66px);
+    // 顶栏 --header-height 容器边距 24px*2
+    // fan-works-section__header 62px gap 24px
+    height: calc(100vh - var(--header-height, 60px) - 48px - 62px - 24px);
   }
 }
 </style>

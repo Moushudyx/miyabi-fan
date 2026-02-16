@@ -96,7 +96,7 @@ onBeforeUnmount(() => {
 @media (max-width: 720px) {
   .page-section {
     height: 100vh;
-    padding: calc(32px + var(--header-height, 60px)) 5vw 32px;
+    padding: calc(24px + var(--header-height, 60px)) 5vw 24px;
   }
 }
 </style>

@@ -1,5 +1,6 @@
 <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
   <!-- 手搓 SVG 真离谱啊真离谱 -->
+  <!-- 作者 moushu 根据官方立绘里面的幽灵形象搓的 -->
   <mask id="hornMaskL">
     <ellipse ry="256" rx="256" cy="184" cx="256" fill="#fff"/>
     <ellipse ry="256" rx="256" cy="174" cx="412" fill="#000000"/>

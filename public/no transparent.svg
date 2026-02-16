@@ -1,5 +1,7 @@
 <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
   <!-- 手搓 SVG 真离谱啊真离谱 -->
+  <!-- 作者 moushu 根据官方立绘里面的幽灵形象搓的 -->
+  <!-- 这个是去掉了半透明填色的版本, 用于生成 ico 文件 -->
   <mask id="hornMaskL">
     <ellipse ry="256" rx="256" cy="184" cx="256" fill="#fff"/>
     <ellipse ry="256" rx="256" cy="174" cx="412" fill="#000000"/>
@@ -34,6 +36,6 @@
     <ellipse ry="109" rx="44" cy="334" cx="256" fill="#b44427"/>
     <!-- 高光 -->
     <ellipse ry="44" rx="54" cy="453" cx="256" fill="#f37859" mask="url(#pupilMask)"/>
-    <ellipse ry="12" rx="16" cy="298" cx="302" fill="#fff0e3c9"/>
+    <ellipse ry="12" rx="16" cy="298" cx="302" fill="#fff0e3"/>
   </g>
 </svg>

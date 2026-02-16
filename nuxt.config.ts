@@ -42,11 +42,6 @@ export default defineNuxtConfig({
       baseURL,
     },
   },
-  router: {
-    options: {
-      trailingSlash: true,
-    },
-  },
   css: ['~/style.scss'],
   nitro: {
     preset: 'github-pages',

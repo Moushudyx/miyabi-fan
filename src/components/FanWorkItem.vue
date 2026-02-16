@@ -22,14 +22,18 @@ const activateByInteraction = inject('fanWorksActivateByInteraction') as (
 const isActive = computed(() => activeIndex?.value === props.index)
 const extraLinks = computed(() => props.work.extraLinks ?? [])
 const hasExtraLinks = computed(() => extraLinks.value.length > 0)
-const resolvedThumbColor = computed(
-  () => props.thumbColor ?? props.work.thumbColor ?? '#2b3150'
-)
+const resolvedThumbColor = computed(() => props.thumbColor ?? props.work.thumbColor ?? '#2b3150')
 
 const isSmallScreen = ref(false)
 const checkScreenSize = () => {
   isSmallScreen.value = window.innerWidth <= 840
 }
+
+const thumbUrl = computed(
+  () =>
+    (isSmallScreen.value ? props.work.thumbUrlMobile || props.work.mediaUrlMobile : props.work.thumbUrl) ||
+    props.work.mediaUrl
+)
 
 onMounted(() => {
   checkScreenSize()
@@ -87,10 +91,7 @@ const openWork = () => {
       <slot name="thumb" :work="props.work">
         <div v-if="props.work.thumbUrl || props.work.type === 'image'" class="fan-work-item__thumb-media">
           <!-- 收起来时展示的是比较窄的缩略图, 所以优先使用移动端的图片 -->
-          <img
-            :src="props.work.thumbUrl || props.work.mediaUrlMobile || props.work.mediaUrl"
-            :alt="props.work.title"
-          />
+          <img :src="thumbUrl" :alt="props.work.title" />
         </div>
         <div v-else class="fan-work-item__thumb-placeholder">
           <span>{{ props.work.title }}</span>
@@ -172,7 +173,7 @@ const openWork = () => {
         </slot>
       </template>
     </div>
-    <div class="fan-work-item__info" :style="{ opacity: isActive ? 1 : 0 }">
+    <div class="fan-work-item__info" :style="{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'auto' : 'none' }">
       <slot name="info" :work="props.work" :open="openUrl">
         <div class="fan-work-item__info-body">
           <strong>{{ props.work.title }}</strong>
@@ -339,8 +340,8 @@ const openWork = () => {
   .fan-work-item__info {
     left: auto;
     right: 12px;
-    top: 12px;
-    bottom: auto;
+    top: auto;
+    bottom: 12px;
   }
 }
 </style>

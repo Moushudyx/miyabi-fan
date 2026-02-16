@@ -7,6 +7,8 @@ export type FanWork = {
   author: string
   /** 缩略图 */
   thumbUrl?: string
+  /** 缩略图(移动端) */
+  thumbUrlMobile?: string
   /** 占位颜色 #57ab69, #57ab7e, #57ab93, #57aba8, #5799ab, #5784ab, #576fab */
   thumbColor?: string
   /** 媒体链接 */
@@ -34,6 +36,7 @@ const getFanWorks = (baseUrl: string): FanWork[] => [
     author: '旋风博文',
     thumbColor: '#57ab7e',
     mediaUrl: `${baseUrl}【自制动画】《星见雅》.png`,
+    thumbUrl: `${baseUrl}【自制动画】《星见雅》-thumb.png`,
     type: 'image',
     url: 'https://www.bilibili.com/video/BV1gkkFYYE3D/?from=moushudyx.github.io%2Fmiyabi-fans%2F',
   },
@@ -42,7 +45,9 @@ const getFanWorks = (baseUrl: string): FanWork[] => [
     author: '邦布帮',
     thumbColor: '#57ab93',
     mediaUrl: `${baseUrl}耳朵有什么问题吗？.png`,
+    thumbUrl: `${baseUrl}耳朵有什么问题吗？-thumb.png`,
     mediaUrlMobile: `${baseUrl}耳朵有什么问题吗？-小屏.png`,
+    thumbUrlMobile: `${baseUrl}耳朵有什么问题吗？-小屏-thumb.png`,
     type: 'image',
     url: 'https://www.bilibili.com/video/BV145kiYtEWw/?from=moushudyx.github.io%2Fmiyabi-fans%2F',
     extraLinks: [

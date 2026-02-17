@@ -179,6 +179,8 @@ watch(
                 </video>
               </div>
             </slot>
+            <!-- 渲染阴影 因为 box-shadow 对 img 等不生效 -->
+            <div class="video-tape-item__spine-shadow"></div>
           </div>
         </div>
         <!-- <div class="video-tape-item__face video-tape-item__face--right"></div> -->
@@ -395,10 +397,19 @@ watch(
   letter-spacing: 0.08em;
   color: #f2f2f2;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(0, 0, 0, 0.25));
-  box-shadow:
-    inset -10px 0 14px rgba(0, 0, 0, 0.45),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   background-color: var(--spine-color);
+}
+
+.video-tape-item__spine-shadow {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  box-shadow:
+    inset -10px 0 14px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  opacity: 1;
+  // mix-blend-mode: screen;
 }
 
 .video-tape-item__meta {

@@ -23,7 +23,7 @@ useHead({
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .about-page {
   min-height: calc(100vh - 72px);
   display: flex;

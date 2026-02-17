@@ -12,7 +12,7 @@ useHead({
   meta: [
     {
       name: 'description',
-      content: '3D 模型鉴赏页，包含模型简介与来源信息',
+      content: '角色鉴赏，包含角色模型鉴赏与相关信息介绍',
     },
   ],
 })
@@ -56,7 +56,7 @@ useHead({
   </PageSlider>
 </template>
 
-<style>
+<style lang="scss">
 .view3d-section {
   display: flex;
   flex-direction: column;

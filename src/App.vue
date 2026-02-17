@@ -17,7 +17,7 @@
   </div>
 </template>
 
-<style>
+<style lang="scss">
 .app-shell {
   min-height: 100vh;
   display: flex;

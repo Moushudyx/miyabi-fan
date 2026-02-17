@@ -104,7 +104,7 @@ const createMmdModels = (baseUrl: string): MmdModelConfig[] => [
 ]
 
 export const useMmdModels = () => {
-  console.log('Loading MMD models with base URL:', useRuntimeConfig().public.baseURL)
+  // console.log('Loading MMD models with base URL:', useRuntimeConfig().public.baseURL)
   const baseUrl = `${useRuntimeConfig().public.baseURL ?? '/'}model/miyabi/`
   return createMmdModels(baseUrl)
 }

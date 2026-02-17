@@ -1,14 +1,16 @@
 <!-- 组件 以录像带风格排布新闻/文章项, 包括抽出和收回动画, 需搭配 VideoTapeRack 使用 -->
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue'
+import type { OfficialInfo } from '../data/officalInfos'
 
 type Props = {
   index: number
+  info: OfficialInfo
   spineColor?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  spineColor: '#2b3150',
+  spineColor: undefined,
 })
 
 const activeIndex = inject('videoTapeActiveIndex') as { value: number }
@@ -24,6 +26,18 @@ const originRect = ref<DOMRect | null>(null)
 const isActive = computed(() => activeIndex?.value === props.index)
 const isFloating = computed(() => isExpanded.value || isClosing.value)
 const showFront = computed(() => isExpanded.value || isClosing.value)
+const showMeta = computed(() => isExpanded.value)
+const resolvedSpineColor = computed(() => props.spineColor ?? props.info.baseColor ?? '#333')
+const showDescription = computed(() => Boolean(props.info.description && props.info.description.trim().length > 0))
+
+const openUrl = (url?: string) => {
+  if (!url || typeof window === 'undefined') return
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
+const openInfo = () => {
+  openUrl(props.info.url)
+}
 
 /**
  * 根据原位置计算抽出/放回的位移量
@@ -115,37 +129,82 @@ watch(
 </script>
 
 <template>
-  <article
-    ref="itemRef"
-    class="video-tape-item"
-    :class="{ 'is-active': isActive, 'is-open': isExpanded, 'is-floating': isFloating, 'is-closing': isClosing }"
-    :style="{ '--offset-x': `${offsetX}px`, '--offset-y': `${offsetY}px`, '--spine-color': props.spineColor }"
-    role="button"
-    tabindex="0"
-    @click="handleToggle"
-    @keydown.enter.prevent="handleKeyToggle"
-    @keydown.space.prevent="handleKeyToggle"
-    @transitionend="handleTransitionEnd"
-  >
-    <div class="video-tape-item__body">
-      <div class="video-tape-item__face video-tape-item__face--front">
-        <div class="video-tape-item__front-content" v-if="showFront">
-          <slot />
+  <div class="video-tape-item-wrapper" :style="{ '--spine-color': resolvedSpineColor }">
+    <article
+      ref="itemRef"
+      class="video-tape-item"
+      :class="{ 'is-active': isActive, 'is-open': isExpanded, 'is-floating': isFloating, 'is-closing': isClosing }"
+      :style="{ '--offset-x': `${offsetX}px`, '--offset-y': `${offsetY}px` }"
+      role="button"
+      tabindex="0"
+      @click="handleToggle"
+      @keydown.enter.prevent="handleKeyToggle"
+      @keydown.space.prevent="handleKeyToggle"
+      @transitionend="handleTransitionEnd"
+    >
+      <div class="video-tape-item__body">
+        <div class="video-tape-item__face video-tape-item__face--front">
+          <div class="video-tape-item__front-content" v-if="showFront">
+            <slot name="cover" :info="props.info" :open="openUrl">
+              <slot :info="props.info" :open="openUrl">
+                <div class="video-tape-item__media" @click.stop="openInfo" @keydown.enter.prevent.stop="openInfo" @keydown.space.prevent.stop="openInfo" role="button" tabindex="0" :aria-label="`打开 ${props.info.title}`">
+                  <img
+                    v-if="props.info.coverMediaType !== 'video'"
+                    :src="props.info.coverMediaUrl"
+                    :alt="props.info.title"
+                    referrerpolicy="no-referrer"
+                  />
+                  <video v-else autoplay muted loop playsinline>
+                    <source :src="props.info.coverMediaUrl" />
+                  </video>
+                </div>
+              </slot>
+            </slot>
+          </div>
         </div>
-      </div>
-      <!-- 不渲染这几个节省性能 -->
-      <!-- <div class="video-tape-item__face video-tape-item__face--back"></div> -->
-      <div class="video-tape-item__face video-tape-item__face--left">
-        <div class="video-tape-item__spine">
-          <slot name="spine" />
+        <!-- 不渲染这几个节省性能 -->
+        <!-- <div class="video-tape-item__face video-tape-item__face--back"></div> -->
+        <div class="video-tape-item__face video-tape-item__face--left">
+          <div class="video-tape-item__spine">
+            <slot name="spine" :info="props.info" :open="openUrl">
+              <div class="video-tape-item__spine-media">
+                <img
+                  v-if="props.info.spineMediaType !== 'video'"
+                  :src="props.info.spineMediaUrl"
+                  :alt="props.info.title"
+                  referrerpolicy="no-referrer"
+                />
+                <video v-else autoplay muted loop playsinline>
+                  <source :src="props.info.spineMediaUrl" />
+                </video>
+              </div>
+            </slot>
+          </div>
         </div>
+        <!-- <div class="video-tape-item__face video-tape-item__face--right"></div> -->
+        <!-- <div class="video-tape-item__face video-tape-item__face--top"></div> -->
+        <!-- <div class="video-tape-item__face video-tape-item__face--bottom"></div> -->
       </div>
-      <!-- <div class="video-tape-item__face video-tape-item__face--right"></div> -->
-      <!-- <div class="video-tape-item__face video-tape-item__face--top"></div> -->
-      <!-- <div class="video-tape-item__face video-tape-item__face--bottom"></div> -->
-    </div>
-    <!-- <div class="video-tape-item__gloss"></div> -->
-  </article>
+      <!-- <div class="video-tape-item__gloss"></div> -->
+      <div v-show="showMeta" class="video-tape-item__meta" :style="{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'auto' : 'none' }">
+        <slot name="meta" :info="props.info" :open="openUrl">
+          <strong
+            class="video-tape-item__title"
+            @click="openInfo"
+            @keydown.enter.prevent="openInfo"
+            @keydown.space.prevent="openInfo"
+            role="button"
+            tabindex="0"
+          >
+            {{ props.info.title }}
+          </strong>
+          <p v-if="showDescription" class="video-tape-item__description">
+            {{ props.info.description }}
+          </p>
+        </slot>
+      </div>
+    </article>
+  </div>
 </template>
 
 <style lang="scss">
@@ -179,11 +238,18 @@ watch(
   initial-value: 0px;
 }
 
+.video-tape-item-wrapper {
+  --tape-width: 160px;
+  --tape-height: 240px;
+  --tape-depth: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--tape-depth);
+}
+
 .video-tape-item {
   position: relative;
-  --tape-width: 66px;
-  --tape-height: 220px;
-  --tape-depth: 34px;
   width: var(--tape-depth);
   height: var(--tape-height);
   flex: 0 0 auto;
@@ -287,6 +353,38 @@ watch(
   justify-content: center;
 }
 
+.video-tape-item__media {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-tape-item__media img,
+.video-tape-item__media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-tape-item__spine-media {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-tape-item__spine-media img,
+.video-tape-item__spine-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .video-tape-item__spine {
   width: 100%;
   height: 100%;
@@ -301,6 +399,31 @@ watch(
     inset -10px 0 14px rgba(0, 0, 0, 0.45),
     inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   background-color: var(--spine-color);
+}
+
+.video-tape-item__meta {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(220px, 70vw);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+  transition: all 240ms ease;
+}
+
+.video-tape-item__title {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
+.video-tape-item__description {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.7;
 }
 
 .video-tape-item__gloss {
@@ -323,19 +446,20 @@ watch(
   left: 50%;
   width: var(--tape-width);
   height: var(--tape-height);
-  --tape-width: 260px;
-  --tape-height: 340px;
-  --tape-depth: 48px;
+  --tape-width: 320px;
+  --tape-height: 480px;
+  --tape-depth: 64px;
   transform: translate(calc(-50% + var(--offset-x, 0px)), calc(-50% + var(--offset-y, 0px)));
   z-index: 60;
   /* box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); */
 }
 
+
 .video-tape-item.is-closing .video-tape-item__body {
   transform: rotateY(90deg);
-  --tape-width: 66px;
-  --tape-height: 220px;
-  --tape-depth: 34px;
+  --tape-width: 160px;
+  --tape-height: 240px;
+  --tape-depth: 32px;
   transition:
     /* all 520ms ease, */
     transform 520ms ease,
@@ -349,9 +473,9 @@ watch(
 
 @media (max-width: 720px) {
   .video-tape-item.is-floating {
-    --tape-width: 220px;
-    --tape-height: 300px;
-    --tape-depth: 44px;
+    --tape-width: 240px;
+    --tape-height: 360px;
+    --tape-depth: 48px;
   }
 }
 </style>

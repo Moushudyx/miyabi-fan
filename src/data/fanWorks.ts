@@ -24,13 +24,22 @@ export type FanWork = {
 }
 
 const getFanWorks = (baseUrl: string): FanWork[] => [
-  {
-    title: '作品 A',
-    author: '某位同人画师',
-    thumbColor: '#57ab69',
-    mediaUrl: `${baseUrl}作品A.jpg`,
-    type: 'image',
-  },
+  // 按照这个示例来写
+  // {
+  //   title: '作品 A',
+  //   author: '某位同人画师',
+  //   thumbColor: '#57ab69',
+  //   mediaUrl: `${baseUrl}作品A.jpg`,
+  //   thumbUrl: `${baseUrl}作品A-thumb.jpg`, // 可选，如果没有则使用 mediaUrl
+  //   mediaUrlMobile: `${baseUrl}作品A-mobile.jpg`, // 可选，如果没有则使用 mediaUrl
+  //   thumbUrlMobile: `${baseUrl}作品A-mobile-thumb.jpg`, // 可选，如果没有则使用 mediaUrlMobile 或 mediaUrl
+  //   url: 'https://www.bilibili.com/video/BVxxxxxx', // 可选，指向作品详情页或作者主页
+  //   extraLinks: [ // 可选，提供额外的相关链接
+  //     { label: '原图', url: 'https://www.bilibili.com/opus/xxxxxx' },
+  //     { label: '作者主页', url: 'https://space.bilibili.com/xxxxxx' },
+  //   ],
+  //   type: 'image',
+  // },
   {
     title: '【自制动画】《星见雅》 | 真的爆炸帅！！！',
     author: '旋风博文',

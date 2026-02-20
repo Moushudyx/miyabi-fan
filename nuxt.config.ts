@@ -1,3 +1,5 @@
+import { transformLazyIf } from "./src/directives/lazyIf"
+
 const baseURL = process.env.NUXT_APP_BASE_URL || '/miyabi-fan/'
 
 export default defineNuxtConfig({
@@ -40,6 +42,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     public: {
       baseURL,
+    },
+  },
+  vue: {
+    compilerOptions: {
+      nodeTransforms: [transformLazyIf as any],
     },
   },
   css: ['~/style.scss'],

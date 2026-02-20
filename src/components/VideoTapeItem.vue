@@ -143,8 +143,8 @@ watch(
       @transitionend="handleTransitionEnd"
     >
       <div class="video-tape-item__body">
-        <div class="video-tape-item__face video-tape-item__face--front">
-          <div class="video-tape-item__front-content" v-if="showFront">
+        <div class="video-tape-item__face video-tape-item__face--front" v-if="showFront">
+          <div class="video-tape-item__front-content">
             <slot name="cover" :info="props.info" :open="openUrl">
               <slot :info="props.info" :open="openUrl">
                 <div class="video-tape-item__media" @click.stop="openInfo" @keydown.enter.prevent.stop="openInfo" @keydown.space.prevent.stop="openInfo" role="button" tabindex="0" :aria-label="`打开 ${props.info.title}`">
@@ -162,8 +162,6 @@ watch(
             </slot>
           </div>
         </div>
-        <!-- 不渲染这几个节省性能 -->
-        <!-- <div class="video-tape-item__face video-tape-item__face--back"></div> -->
         <div class="video-tape-item__face video-tape-item__face--left">
           <div class="video-tape-item__spine">
             <slot name="spine" :info="props.info" :open="openUrl">
@@ -183,9 +181,11 @@ watch(
             <div class="video-tape-item__spine-shadow"></div>
           </div>
         </div>
-        <!-- <div class="video-tape-item__face video-tape-item__face--right"></div> -->
-        <!-- <div class="video-tape-item__face video-tape-item__face--top"></div> -->
-        <!-- <div class="video-tape-item__face video-tape-item__face--bottom"></div> -->
+        <!-- 不渲染这几个节省性能 -->
+        <div class="video-tape-item__face video-tape-item__face--back" v-lazy-if="showFront"></div>
+        <div class="video-tape-item__face video-tape-item__face--right" v-lazy-if="showFront"></div>
+        <div class="video-tape-item__face video-tape-item__face--top" v-lazy-if="showFront"></div>
+        <div class="video-tape-item__face video-tape-item__face--bottom" v-lazy-if="showFront"></div>
       </div>
       <!-- <div class="video-tape-item__gloss"></div> -->
       <div v-show="showMeta" class="video-tape-item__meta" :style="{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'auto' : 'none' }">

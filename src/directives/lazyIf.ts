@@ -17,6 +17,7 @@ import {
 // import { createCommentVNode } from 'vue'
 // import { ssrTransformIf } from '@vue/compiler-ssr'
 
+// antfu/v-lazy-show 的实现不可靠 https://github.com/vuejs/core/blob/main/packages/compiler-ssr/src/index.ts
 /** @vue/compiler-ssr 没有导出 ssrTransformIf, 但需要它来处理 SSR 场景 */
 export const ssrTransformIf: NodeTransform = createStructuralDirectiveTransform(
   /^(?:if|else|else-if)$/,
@@ -37,10 +38,22 @@ function getIndexedKey(contextRoot: RootNode) {
   return current
 }
 
+/** 递归当前节点与子节点判断是否有 v-if/v-else/v-lazy-if */
+function childrenHasVIf(node: TemplateChildNode): boolean {
+  if (node.type === 1) { // NodeTypes.ELEMENT
+    if (node.props.some(p => p.name === 'if' || p.name === 'else' || p.name === 'else-if' || p.name === 'lazy-if' || p.name === 'lazy-show')) return true
+    return node.children ? node.children.some(childrenHasVIf) : false
+  }
+  return false
+}
+
 /**
  * 实现懒加载的 v-show 功能, 请将此功能添加进 `vue.compilerOptions.nodeTransforms` 中\
  * 如果发生 Typescript 报错(我也不想的), 请使用 `as any`\
- * 警告: 请勿使用 `v-if.lazy` 的写法, 因为这会导致指令解析失败, 目前的实现只能识别 `v-lazy-if` `v-lazy-show` `v-show.lazy` 的写法
+ * 警告:
+ * 1. 请勿使用 `v-if.lazy` 的写法, 因为这会导致指令解析失败, 目前的实现只能识别 `v-lazy-if` `v-lazy-show` `v-show.lazy` 的写法
+ * 2. 由于实现原理的限制, 目前不支持在已经使用 `v-lazy-if` 的元素上同时使用 `v-if` 和 `v-show`
+ * 3. 由于实现原理的限制, 目前不支持在已经使用 `v-lazy-if` 的元素下使用 `v-lazy-if` 或 `v-if` 来控制子元素的显示与隐藏
  */
 export const transformLazyIf = createStructuralDirectiveTransform(
   /^(?:lazy-(?:if|show)|(?:if|show))$/,
@@ -48,6 +61,16 @@ export const transformLazyIf = createStructuralDirectiveTransform(
     // 特殊场景: 不是 lazy 的指令正常处理
     const isLazy = dir.name.startsWith('lazy-') || dir.modifiers.some((item) => item.content === 'lazy')
     if (!isLazy) return () => node.props.push(dir)
+
+    // 检查子节点是否有 v-if/v-else
+    if (node.children) {
+      if (node.props.some(p => p.name === 'if' || p.name === 'else' || p.name === 'else-if' || p.name === 'lazy-if' || p.name === 'lazy-show' || p.name === 'show')) {
+        throw new Error(`Directive ${dir.name} can not be used on element with v-if/v-show.`)
+      }
+      if (node.children.some(childrenHasVIf)) {
+        throw new Error(`Directive ${dir.name} can not be used on element with v-if/v-lazy-if on its children.`)
+      }
+    }
 
     // 预处理: 指令名称, 用于报错和警告
     const directiveName = /^lazy-(?:if|show)$/.test(dir.name) ? dir.name : dir.name + '.lazy'
@@ -70,33 +93,16 @@ export const transformLazyIf = createStructuralDirectiveTransform(
     // 特殊场景处理: 如果用在 template 上或者 SSR 时, 则转换为 v-if, 因为这两种场景下无法实现 v-show 的效果
     const isTemplate = node.tag === 'template'
     const isSSR = context.inSSR || context.ssr
-    // 特殊场景: 如果用在 template 上则转换为 v-if
     // 未来计划: 智能降级策略, 如果 template 下只有一个元素且其上没有 v-show 或 v-if, 则直接在该元素上添加
-    // const originIsShow = dir.name.endsWith('show')
-    if (isTemplate) {
-      // if (originIsShow) throw new Error(`Directive lazy-show can not be used on <template>`)
+    if (isTemplate || isSSR) {
       // 弹出警告
-      console.warn(`Directive ${directiveName} can not be used on <template>, fallback to v-if`)
+      if (isTemplate) console.warn(`Directive ${directiveName} can not be used on <template>, fallback to v-if`)
       node.props.push({
         ...dir,
         name: 'if',
         modifiers: dir.modifiers.filter((item) => item.content !== 'lazy'),
       })
       if (isSSR) ssrTransformIf(node, context)
-      return
-    }
-
-    // 特殊场景: SSR 时, 转换为 v-if
-    if (isSSR) {
-      node.props.push({
-        ...dir,
-        // name: originIsShow ? 'show' : 'if',
-        name: 'if',
-        modifiers: dir.modifiers.filter((item) => item.content !== 'lazy'),
-      })
-      // console.log(context.nodeTransforms)
-      ssrTransformIf(node, context)
-      // context.nodeTransforms[1]!(node, context)
       return
     }
 

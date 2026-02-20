@@ -34,6 +34,14 @@ export const getNewsInfos = (baseUrl: string): OfficialInfo[] => [
     spineMediaType: 'image',
   },
   {
+    title: '2024日常',
+    url: 'https://t.bilibili.com/1014365189664931843?from=moushudyx.github.io%2Fmiyabi-fans%2F',
+    coverMediaUrl: 'https://i0.hdslb.com/bfs/new_dyn/7e8ba9eeda21d995226822047fc87c461636034895.jpg@518w.webp',
+    coverMediaType: 'image',
+    spineMediaUrl: 'https://i0.hdslb.com/bfs/new_dyn/7e8ba9eeda21d995226822047fc87c461636034895.jpg@518w.webp',
+    spineMediaType: 'image',
+  },
+  {
     title: '2024圣诞节贺图',
     url: 'https://t.bilibili.com/1014747866946601015?from=moushudyx.github.io%2Fmiyabi-fans%2F',
     coverMediaUrl: 'https://i1.hdslb.com/bfs/new_dyn/7b088a0117a7a14d662d1263e51d5e231636034895.jpg@518w.webp',

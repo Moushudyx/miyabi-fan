@@ -147,14 +147,22 @@ watch(
           <div class="video-tape-item__front-content">
             <slot name="cover" :info="props.info" :open="openUrl">
               <slot :info="props.info" :open="openUrl">
-                <div class="video-tape-item__media" @click.stop="openInfo" @keydown.enter.prevent.stop="openInfo" @keydown.space.prevent.stop="openInfo" role="button" tabindex="0" :aria-label="`打开 ${props.info.title}`">
+                <div
+                  class="video-tape-item__media"
+                  @click.stop="openInfo"
+                  @keydown.enter.prevent.stop="openInfo"
+                  @keydown.space.prevent.stop="openInfo"
+                  role="button"
+                  tabindex="0"
+                  :aria-label="`打开 ${props.info.title}`"
+                >
                   <img
                     v-if="props.info.coverMediaType !== 'video'"
+                    referrerpolicy="no-referrer"
                     :src="props.info.coverMediaUrl"
                     :alt="props.info.title"
-                    referrerpolicy="no-referrer"
                   />
-                  <video v-else autoplay muted loop playsinline>
+                  <video v-else-if="props.info.coverMediaType === 'video'" autoplay muted loop playsinline>
                     <source :src="props.info.coverMediaUrl" />
                   </video>
                 </div>
@@ -168,11 +176,11 @@ watch(
               <div class="video-tape-item__spine-media">
                 <img
                   v-if="props.info.spineMediaType !== 'video'"
+                  referrerpolicy="no-referrer"
                   :src="props.info.spineMediaUrl"
                   :alt="props.info.title"
-                  referrerpolicy="no-referrer"
                 />
-                <video v-else autoplay muted loop playsinline>
+                <video v-else-if="props.info.spineMediaType === 'video'" autoplay muted loop playsinline>
                   <source :src="props.info.spineMediaUrl" />
                 </video>
               </div>
@@ -188,7 +196,11 @@ watch(
         <div class="video-tape-item__face video-tape-item__face--bottom" v-lazy-if="showFront"></div>
       </div>
       <!-- <div class="video-tape-item__gloss"></div> -->
-      <div v-show="showMeta" class="video-tape-item__meta" :style="{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'auto' : 'none' }">
+      <div
+        v-show="showMeta"
+        class="video-tape-item__meta"
+        :style="{ opacity: isActive ? 1 : 0, pointerEvents: isActive ? 'auto' : 'none' }"
+      >
         <slot name="meta" :info="props.info" :open="openUrl">
           <strong
             class="video-tape-item__title"
@@ -271,7 +283,6 @@ watch(
 .video-tape-item:not(.is-floating):not(.is-open):not(.is-closing) {
   transition: transform 0ms;
 }
-
 
 .video-tape-item__body {
   position: absolute;
@@ -465,18 +476,17 @@ watch(
   /* box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); */
 }
 
-
 .video-tape-item.is-closing .video-tape-item__body {
   transform: rotateY(90deg);
   --tape-width: 160px;
   --tape-height: 240px;
   --tape-depth: 32px;
   transition:
-    /* all 520ms ease, */
+    // all 520ms ease,
     transform 520ms ease,
-    /* box-shadow 520ms ease, */
-    /* width 520ms ease, */
-    /* height 520ms ease, */
+    // box-shadow 520ms ease,
+    // width 520ms ease,
+    // height 520ms ease,
     --tape-width 520ms ease,
     --tape-height 520ms ease,
     --tape-depth 520ms ease;

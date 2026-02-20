@@ -337,7 +337,7 @@ watch(
 }
 
 .video-tape-item__face--right {
-  transform: rotateY(90deg) translateZ(calc(var(--tape-depth) / 2));
+  transform: rotateY(90deg) translateZ(calc(var(--tape-width) - var(--tape-depth) / 2));
   background: rgba(4, 9, 12, 0.92);
 }
 
@@ -349,12 +349,12 @@ watch(
 }
 
 .video-tape-item__face--top {
-  transform: rotateX(90deg) translateZ(calc(var(--tape-height) / 2));
+  transform: rotateX(90deg) translateZ(calc(var(--tape-depth) / 2));
   background: rgba(8, 14, 18, 0.92);
 }
 
 .video-tape-item__face--bottom {
-  transform: rotateX(-90deg) translateZ(calc(var(--tape-height) / 2));
+  transform: rotateX(-90deg) translateZ(calc(var(--tape-height) - var(--tape-depth) / 2));
   background: rgba(4, 9, 12, 0.92);
 }
 

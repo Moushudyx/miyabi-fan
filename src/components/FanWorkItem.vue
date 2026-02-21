@@ -216,7 +216,7 @@ const openWork = () => {
 }
 
 .fan-work-item.is-active {
-  flex: 3.4;
+  flex: 5.6;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
 }
 

@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue'
 import type { OfficialInfo } from '../data/officialInfos'
-import { _, clamp, curry } from 'foreslash'
+import { _, clamp, curry, sleep } from 'foreslash'
 
 type Props = {
   index: number
@@ -30,8 +30,9 @@ const showFront = computed(() => isExpanded.value || isClosing.value)
 const showMeta = computed(() => isExpanded.value)
 const resolvedSpineColor = computed(() => props.spineColor ?? props.info.baseColor ?? '#333')
 const showDescription = computed(() => Boolean(props.info.description && props.info.description.trim().length > 0))
+// @ts-ignore
 const clampHorizontalShift = curry(clamp)(_, 0, 100, { default: 50 })
-console.log('clampHorizontalShift(120)', clampHorizontalShift(120))
+// console.log('clampHorizontalShift(120)', clampHorizontalShift(120))
 const coverMediaObjectPosition = computed(() => `${clampHorizontalShift(props.info.coverMediaHorizontalShift || 50)}% 50%`)
 const spineMediaObjectPosition = computed(() => `${clampHorizontalShift(props.info.spineMediaHorizontalShift || 50)}% 50%`)
 
@@ -243,22 +244,26 @@ watch(
 </template>
 
 <style lang="scss">
+$origin-tape-width: 160px;
+$origin-tape-height: 240px;
+$origin-tape-depth: 32px;
+
 @property --tape-width {
   syntax: '<length>';
   inherits: true;
-  initial-value: 66px;
+  initial-value: $origin-tape-width;
 }
 
 @property --tape-height {
   syntax: '<length>';
   inherits: true;
-  initial-value: 220px;
+  initial-value: $origin-tape-height;
 }
 
 @property --tape-depth {
   syntax: '<length>';
   inherits: true;
-  initial-value: 34px;
+  initial-value: $origin-tape-depth;
 }
 
 @property --offset-x {
@@ -274,9 +279,9 @@ watch(
 }
 
 .video-tape-item-wrapper {
-  --tape-width: 160px;
-  --tape-height: 240px;
-  --tape-depth: 32px;
+  --tape-width: $origin-tape-width;
+  --tape-height: $origin-tape-height;
+  --tape-depth: $origin-tape-depth;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -297,6 +302,8 @@ watch(
     box-shadow 520ms ease,
     width 520ms ease,
     height 520ms ease,
+    --offset-x 520ms ease,
+    --offset-y 520ms ease,
     --tape-width 520ms ease,
     --tape-height 520ms ease,
     --tape-depth 520ms ease;
@@ -489,9 +496,9 @@ watch(
   left: 50%;
   width: var(--tape-width);
   height: var(--tape-height);
-  --tape-width: 320px;
-  --tape-height: 480px;
-  --tape-depth: 64px;
+  --tape-width: $origin-tape-width * 2;
+  --tape-height: $origin-tape-height * 2;
+  --tape-depth: $origin-tape-depth * 2;
   transform: translate(calc(-50% + var(--offset-x, 0px)), calc(-50% + var(--offset-y, 0px)));
   z-index: 60;
   /* box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); */
@@ -515,9 +522,9 @@ watch(
 
 @media (max-width: 720px) {
   .video-tape-item.is-floating {
-    --tape-width: 240px;
-    --tape-height: 360px;
-    --tape-depth: 48px;
+    --tape-width: $origin-tape-width * 1.5;
+    --tape-height: $origin-tape-height * 1.5;
+    --tape-depth: $origin-tape-depth * 1.5;
   }
 }
 </style>

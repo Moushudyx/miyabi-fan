@@ -43,7 +43,7 @@ const isOpen = computed(() => activeIndex.value >= 0)
     <div class="video-tape-rack__track">
       <slot />
     </div>
-    <div v-if="isOpen" class="video-tape-rack__overlay" @click="closeActive"></div>
+    <div v-show="isOpen" class="video-tape-rack__overlay" @click="closeActive"></div>
   </section>
 </template>
 

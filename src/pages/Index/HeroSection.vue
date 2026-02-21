@@ -4,7 +4,7 @@
     <div class="hero-section__copy" data-reveal data-delay="1">
       <p class="hero-section__eyebrow">Zenless Zone Zero · 星见雅</p>
       <h1 class="hero-section__title">夜色、风刃与绯光</h1>
-      <p class="hero-section__subtitle">这里是星见雅的个人应援站</p>
+      <p class="hero-section__subtitle">这里是星见雅的粉丝站</p>
       <div class="hero-section__cta">
         <button class="hero-section__button">了解角色</button>
         <button class="hero-section__button hero-section__button--ghost">同人作品</button>

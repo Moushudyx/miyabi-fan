@@ -31,7 +31,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: var(--header-height, 72px);
+  // min-height: var(--header-height, 72px);
+  height: var(--header-height, 72px);
   padding: 16px 32px;
   background: rgba(6, 15, 18, 0.82);
   backdrop-filter: blur(12px);

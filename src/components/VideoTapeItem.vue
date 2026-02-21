@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue'
 import type { OfficialInfo } from '../data/officialInfos'
-import { _, clamp, curry, sleep } from 'foreslash'
+import { _, clamp, curry, debounce, sleep } from 'foreslash'
 
 type Props = {
   index: number
@@ -17,12 +17,13 @@ const props = withDefaults(defineProps<Props>(), {
 const activeIndex = inject('videoTapeActiveIndex') as { value: number }
 const toggleActive = inject('videoTapeToggleActive') as (index: number) => void
 
-const itemRef = ref<HTMLElement | null>(null)
+const containerRef = ref<HTMLElement | null>(null)
+const shadowRef = ref<HTMLElement | null>(null)
 const isExpanded = ref(false)
 const isClosing = ref(false)
 const offsetX = ref(0)
 const offsetY = ref(0)
-const originRect = ref<DOMRect | null>(null)
+// const originRect = ref<DOMRect | null>(null)
 
 const isActive = computed(() => activeIndex?.value === props.index)
 const isFloating = computed(() => isExpanded.value || isClosing.value)
@@ -48,51 +49,69 @@ const openInfo = () => {
 /**
  * 根据原位置计算抽出/放回的位移量
  */
-const setOffsetFromRect = (rect: DOMRect) => {
-  const centerX = window.innerWidth / 2
-  const centerY = window.innerHeight / 2
-  offsetX.value = rect.left + rect.width / 2 - centerX
-  offsetY.value = rect.top + rect.height / 2 - centerY
+const setOffsetFromRect = () => {
+  if (!containerRef.value) return
+  if (!shadowRef.value) return
+
+  const containerRect = containerRef.value.getBoundingClientRect()
+  const shadowRect = shadowRef.value.getBoundingClientRect()
+  offsetX.value = shadowRect.left - containerRect.left
+  offsetY.value = shadowRect.top - containerRect.top
+  // const centerX = window.innerWidth / 2
+  // const centerY = window.innerHeight / 2
+  // offsetX.value = rect.left - centerX // + rect.width * 1 / 4
+  // offsetY.value = rect.top - centerY // - rect.height * 1 / 2
+  if (props.index === 0) {
+    console.log('setOffsetFromRect for index', props.index)
+    console.log('containerRect', containerRect)
+    console.log('shadowRect', shadowRect)
+    // console.log('size', rect.width, rect.height)
+    // console.log('position', rect.left, rect.top)
+    // console.log('centerX', centerX, 'centerY', centerY)
+    console.log('offsetX', offsetX.value, 'offsetY', offsetY.value)
+  }
 }
 
 /**
  * 抽出录像带，先记录位置，再过渡到屏幕中央
  */
 const openTape = async () => {
-  if (!itemRef.value) return
-  originRect.value = itemRef.value.getBoundingClientRect()
-  setOffsetFromRect(originRect.value)
+  setOffsetFromRect()
   isExpanded.value = true
   isClosing.value = false
-  await nextTick()
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      offsetX.value = 0
-      offsetY.value = 0
-    })
+    offsetX.value = 0
+    offsetY.value = 0
   })
+  await sleep(120)
+  // await nextTick()
+  // requestAnimationFrame(() => {
+  //   requestAnimationFrame(() => {
+  //     offsetX.value = 0
+  //     offsetY.value = 0
+  //   })
+  // })
 }
 
 /**
  * 放回录像带，回到记录的原位，再结束状态
  */
-const closeTape = () => {
-  if (!originRect.value) {
-    isExpanded.value = false
-    isClosing.value = false
-    return
-  }
+const closeTape = async () => {
+  // if (!originRect.value) {
+  //   isExpanded.value = false
+  //   isClosing.value = false
+  //   return
+  // }
   isClosing.value = true
   offsetX.value = 0
   offsetY.value = 0
-  requestAnimationFrame(() => {
-    if (!originRect.value) return
-    requestAnimationFrame(() => {
-      if (originRect.value) {
-        setOffsetFromRect(originRect.value)
-      }
-    })
-  })
+  await sleep(0)
+  setOffsetFromRect()
+  await sleep(520)
+  if (isClosing.value && activeIndex?.value !== props.index) {
+    isClosing.value = false
+    isExpanded.value = false
+  }
 }
 
 /**
@@ -114,7 +133,7 @@ const handleKeyToggle = () => {
  */
 const handleTransitionEnd = (event: TransitionEvent) => {
   if (event.propertyName !== 'transform') return
-  if (event.target !== itemRef.value) return
+  if (event.target !== containerRef.value) return
   if (isClosing.value) {
     isClosing.value = false
     isExpanded.value = false
@@ -132,12 +151,28 @@ watch(
   },
   { immediate: true }
 )
+
+onMounted(() => {
+  const calcRect = debounce(() => {
+    if (activeIndex?.value !== props.index) {
+      // console.log('calcRect for index', props.index)
+      setOffsetFromRect()
+    }
+  }, 240, { leading: true, trailing: true })
+  calcRect()
+  window.addEventListener('resize', calcRect)
+  window.addEventListener('scroll', calcRect, { passive: true, capture: true })
+  return () => {
+    window.removeEventListener('resize', calcRect)
+    window.removeEventListener('scroll', calcRect)
+  }
+})
+
 </script>
 
 <template>
-  <div class="video-tape-item-wrapper" :style="{ '--spine-color': resolvedSpineColor }">
+  <div ref="containerRef" class="video-tape-item-wrapper" :style="{ '--spine-color': resolvedSpineColor }">
     <article
-      ref="itemRef"
       class="video-tape-item"
       :class="{ 'is-active': isActive, 'is-open': isExpanded, 'is-floating': isFloating, 'is-closing': isClosing }"
       :style="{ '--offset-x': `${offsetX}px`, '--offset-y': `${offsetY}px` }"
@@ -240,6 +275,7 @@ watch(
         </slot>
       </div>
     </article>
+    <div ref="shadowRef" class="video-tape-item__shadow"></div>
   </div>
 </template>
 
@@ -279,22 +315,39 @@ $origin-tape-depth: 32px;
 }
 
 .video-tape-item-wrapper {
-  --tape-width: $origin-tape-width;
-  --tape-height: $origin-tape-height;
-  --tape-depth: $origin-tape-depth;
+  --tape-width: #{$origin-tape-width};
+  --tape-height: #{$origin-tape-height};
+  --tape-depth: #{$origin-tape-depth};
   display: flex;
+  width: var(--tape-depth);
+  height: var(--tape-height);
   flex-direction: column;
   align-items: center;
   width: var(--tape-depth);
+  // outline: #f2f2f2 1px solid;
 }
-
+.video-tape-item__shadow {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: $origin-tape-depth;
+  height: $origin-tape-height;
+  perspective: 900px;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  opacity: 0;
+}
 .video-tape-item {
-  position: relative;
+  position: fixed;
+  top: 50%;
+  left: 50%;
   width: var(--tape-depth);
   height: var(--tape-height);
   flex: 0 0 auto;
   perspective: 900px;
   transform-style: preserve-3d;
+  // transform: translate(calc(50% + var(--offset-x, 0px)), calc(50% + var(--offset-y, 0px)));
+  transform: translate(calc(0px - var(--offset-x, 0px)), calc(0px - var(--offset-y, 0px))); // - var(--header-height, 0px)
   cursor: pointer;
   transition:
     all 520ms ease,
@@ -496,35 +549,42 @@ $origin-tape-depth: 32px;
   left: 50%;
   width: var(--tape-width);
   height: var(--tape-height);
-  --tape-width: $origin-tape-width * 2;
-  --tape-height: $origin-tape-height * 2;
-  --tape-depth: $origin-tape-depth * 2;
-  transform: translate(calc(-50% + var(--offset-x, 0px)), calc(-50% + var(--offset-y, 0px)));
+  --tape-width: #{$origin-tape-width * 2};
+  --tape-height: #{$origin-tape-height * 2};
+  --tape-depth: #{$origin-tape-depth * 2};
+  transform: translate(calc(0px - var(--tape-width) / 2), calc(0px - var(--tape-height) / 2 - var(--header-height, 0px) / 2));
   z-index: 60;
   /* box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6); */
+  &.is-closing {
+    width: var(--tape-depth);
+    transform: translate(calc(0px - var(--offset-x, 0px)), calc(0px - var(--offset-y, 0px)));
+    --tape-width: #{$origin-tape-width};
+    --tape-height: #{$origin-tape-height};
+    --tape-depth: #{$origin-tape-depth};
+  }
 }
 
 .video-tape-item.is-closing .video-tape-item__body {
   transform: rotateY(90deg);
-  --tape-width: 160px;
-  --tape-height: 240px;
-  --tape-depth: 32px;
-  transition:
-    // all 520ms ease,
-    transform 520ms ease,
-    // box-shadow 520ms ease,
-    // width 520ms ease,
-    // height 520ms ease,
-    --tape-width 520ms ease,
-    --tape-height 520ms ease,
-    --tape-depth 520ms ease;
+  // --tape-width: $origin-tape-width;
+  // --tape-height: $origin-tape-height;
+  // --tape-depth: $origin-tape-depth;
+  // transition:
+  //   // all 520ms ease,
+  //   transform 520ms ease,
+  //   // box-shadow 520ms ease,
+  //   // width 520ms ease,
+  //   // height 520ms ease,
+  //   --tape-width 520ms ease,
+  //   --tape-height 520ms ease,
+  //   --tape-depth 520ms ease;
 }
 
 @media (max-width: 720px) {
   .video-tape-item.is-floating {
-    --tape-width: $origin-tape-width * 1.5;
-    --tape-height: $origin-tape-height * 1.5;
-    --tape-depth: $origin-tape-depth * 1.5;
+    --tape-width: #{$origin-tape-width * 1.5};
+    --tape-height: #{$origin-tape-height * 1.5};
+    --tape-depth: #{$origin-tape-depth * 1.5};
   }
 }
 </style>

@@ -1,7 +1,8 @@
 <!-- 组件 以录像带风格排布新闻/文章项, 包括抽出和收回动画, 需搭配 VideoTapeRack 使用 -->
 <script setup lang="ts">
 import { computed, inject, nextTick, ref, watch } from 'vue'
-import type { OfficialInfo } from '../data/officalInfos'
+import type { OfficialInfo } from '../data/officialInfos'
+import { _, clamp, curry } from 'foreslash'
 
 type Props = {
   index: number
@@ -29,6 +30,10 @@ const showFront = computed(() => isExpanded.value || isClosing.value)
 const showMeta = computed(() => isExpanded.value)
 const resolvedSpineColor = computed(() => props.spineColor ?? props.info.baseColor ?? '#333')
 const showDescription = computed(() => Boolean(props.info.description && props.info.description.trim().length > 0))
+const clampHorizontalShift = curry(clamp)(_, 0, 100, { default: 50 })
+console.log('clampHorizontalShift(120)', clampHorizontalShift(120))
+const coverMediaObjectPosition = computed(() => `${clampHorizontalShift(props.info.coverMediaHorizontalShift || 50)}% 50%`)
+const spineMediaObjectPosition = computed(() => `${clampHorizontalShift(props.info.spineMediaHorizontalShift || 50)}% 50%`)
 
 const openUrl = (url?: string) => {
   if (!url || typeof window === 'undefined') return
@@ -161,8 +166,16 @@ watch(
                     referrerpolicy="no-referrer"
                     :src="props.info.coverMediaUrl"
                     :alt="props.info.title"
+                    :style="{ objectPosition: coverMediaObjectPosition }"
                   />
-                  <video v-else-if="props.info.coverMediaType === 'video'" autoplay muted loop playsinline>
+                  <video
+                    v-else-if="props.info.coverMediaType === 'video'"
+                    autoplay
+                    muted
+                    loop
+                    playsinline
+                    :style="{ objectPosition: coverMediaObjectPosition }"
+                  >
                     <source :src="props.info.coverMediaUrl" />
                   </video>
                 </div>
@@ -179,8 +192,16 @@ watch(
                   referrerpolicy="no-referrer"
                   :src="props.info.spineMediaUrl"
                   :alt="props.info.title"
+                  :style="{ objectPosition: spineMediaObjectPosition }"
                 />
-                <video v-else-if="props.info.spineMediaType === 'video'" autoplay muted loop playsinline>
+                <video
+                  v-else-if="props.info.spineMediaType === 'video'"
+                  autoplay
+                  muted
+                  loop
+                  playsinline
+                  :style="{ objectPosition: spineMediaObjectPosition }"
+                >
                   <source :src="props.info.spineMediaUrl" />
                 </video>
               </div>

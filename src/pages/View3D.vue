@@ -23,9 +23,9 @@ useHead({
     <PageSection v-for="model in mmdModels" :key="model.id" :id="`view3d-${model.id}`" :title="model.name">
       <div class="view3d-section">
         <div class="view3d-section__intro" data-reveal>
-          <p class="view3d-section__kicker">3D 鉴赏</p>
-          <h2 class="view3d-section__title">{{ model.name }}</h2>
+          <!-- <p class="view3d-section__kicker">3D 鉴赏</p> -->
           <p class="view3d-section__summary">{{ model.subtitle }}</p>
+          <h2 class="view3d-section__title">{{ model.name }}</h2>
         </div>
         <ClientOnly>
           <MmdViewer :model="model" />

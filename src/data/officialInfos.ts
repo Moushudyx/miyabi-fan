@@ -34,7 +34,7 @@ export const getNewsInfos = (baseUrl: string): OfficialInfo[] => [
     spineMediaType: 'image',
   },
   {
-    title: '2024日常',
+    title: '2024 12 24 日常',
     url: 'https://t.bilibili.com/1014365189664931843?from=moushudyx.github.io%2Fmiyabi-fans%2F',
     coverMediaUrl: 'https://i0.hdslb.com/bfs/new_dyn/7e8ba9eeda21d995226822047fc87c461636034895.jpg@518w.webp',
     coverMediaType: 'image',
@@ -55,6 +55,14 @@ export const getNewsInfos = (baseUrl: string): OfficialInfo[] => [
     coverMediaUrl: 'https://i1.hdslb.com/bfs/new_dyn/e8baed2ebc05ed1b4480a30cbc8a6e9e1636034895.jpg@518w.webp',
     coverMediaType: 'image',
     spineMediaUrl: 'https://i1.hdslb.com/bfs/new_dyn/e8baed2ebc05ed1b4480a30cbc8a6e9e1636034895.jpg@518w.webp',
+    spineMediaType: 'image',
+  },
+  {
+    title: '1月月历壁纸',
+    url: 'https://t.bilibili.com/1017345467431780357?from=moushudyx.github.io%2Fmiyabi-fans%2F',
+    coverMediaUrl: 'https://i0.hdslb.com/bfs/new_dyn/c449b11313b3532b75633d284ef7a4ba1636034895.jpg@518w.webp',
+    coverMediaType: 'image',
+    spineMediaUrl: 'https://i0.hdslb.com/bfs/new_dyn/c449b11313b3532b75633d284ef7a4ba1636034895.jpg@518w.webp',
     spineMediaType: 'image',
   },
   {

@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import VideoTapeItem from '../../components/VideoTapeItem.vue'
 import VideoTapeRack from '../../components/VideoTapeRack.vue'
-import { useNewsInfos, useOfficialInfos } from '../../data/officalInfos'
+import { useNewsInfos, useOfficialInfos } from '../../data/officialInfos'
 
 const newsInfos = useNewsInfos()
 const officialInfos = useOfficialInfos()

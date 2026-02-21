@@ -23,7 +23,6 @@ const isExpanded = ref(false)
 const isClosing = ref(false)
 const offsetX = ref(0)
 const offsetY = ref(0)
-// const originRect = ref<DOMRect | null>(null)
 
 const isActive = computed(() => activeIndex?.value === props.index)
 const isFloating = computed(() => isExpanded.value || isClosing.value)
@@ -57,19 +56,6 @@ const setOffsetFromRect = () => {
   const shadowRect = shadowRef.value.getBoundingClientRect()
   offsetX.value = shadowRect.left - containerRect.left
   offsetY.value = shadowRect.top - containerRect.top
-  // const centerX = window.innerWidth / 2
-  // const centerY = window.innerHeight / 2
-  // offsetX.value = rect.left - centerX // + rect.width * 1 / 4
-  // offsetY.value = rect.top - centerY // - rect.height * 1 / 2
-  if (props.index === 0) {
-    console.log('setOffsetFromRect for index', props.index)
-    console.log('containerRect', containerRect)
-    console.log('shadowRect', shadowRect)
-    // console.log('size', rect.width, rect.height)
-    // console.log('position', rect.left, rect.top)
-    // console.log('centerX', centerX, 'centerY', centerY)
-    console.log('offsetX', offsetX.value, 'offsetY', offsetY.value)
-  }
 }
 
 /**
@@ -79,29 +65,15 @@ const openTape = async () => {
   setOffsetFromRect()
   isExpanded.value = true
   isClosing.value = false
-  requestAnimationFrame(() => {
-    offsetX.value = 0
-    offsetY.value = 0
-  })
-  await sleep(120)
-  // await nextTick()
-  // requestAnimationFrame(() => {
-  //   requestAnimationFrame(() => {
-  //     offsetX.value = 0
-  //     offsetY.value = 0
-  //   })
-  // })
+  await sleep(0)
+  offsetX.value = 0
+  offsetY.value = 0
 }
 
 /**
  * 放回录像带，回到记录的原位，再结束状态
  */
 const closeTape = async () => {
-  // if (!originRect.value) {
-  //   isExpanded.value = false
-  //   isClosing.value = false
-  //   return
-  // }
   isClosing.value = true
   offsetX.value = 0
   offsetY.value = 0
@@ -155,7 +127,6 @@ watch(
 onMounted(() => {
   const calcRect = debounce(() => {
     if (activeIndex?.value !== props.index) {
-      // console.log('calcRect for index', props.index)
       setOffsetFromRect()
     }
   }, 240, { leading: true, trailing: true })
@@ -324,7 +295,6 @@ $origin-tape-depth: 32px;
   flex-direction: column;
   align-items: center;
   width: var(--tape-depth);
-  // outline: #f2f2f2 1px solid;
 }
 .video-tape-item__shadow {
   position: fixed;
@@ -346,7 +316,6 @@ $origin-tape-depth: 32px;
   flex: 0 0 auto;
   perspective: 900px;
   transform-style: preserve-3d;
-  // transform: translate(calc(50% + var(--offset-x, 0px)), calc(50% + var(--offset-y, 0px)));
   transform: translate(calc(0px - var(--offset-x, 0px)), calc(0px - var(--offset-y, 0px))); // - var(--header-height, 0px)
   cursor: pointer;
   transition:
@@ -566,18 +535,6 @@ $origin-tape-depth: 32px;
 
 .video-tape-item.is-closing .video-tape-item__body {
   transform: rotateY(90deg);
-  // --tape-width: $origin-tape-width;
-  // --tape-height: $origin-tape-height;
-  // --tape-depth: $origin-tape-depth;
-  // transition:
-  //   // all 520ms ease,
-  //   transform 520ms ease,
-  //   // box-shadow 520ms ease,
-  //   // width 520ms ease,
-  //   // height 520ms ease,
-  //   --tape-width 520ms ease,
-  //   --tape-height 520ms ease,
-  //   --tape-depth 520ms ease;
 }
 
 @media (max-width: 720px) {

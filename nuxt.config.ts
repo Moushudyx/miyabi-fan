@@ -1,7 +1,8 @@
 import { transformLazyIf } from "./src/directives/lazyIf"
 
 const repositoryName = process.env.GITHUB_REPOSITORY?.split('/')[1]
-const baseURL = process.env.NUXT_APP_BASE_URL || (repositoryName ? `/${repositoryName}/` : '/')
+const isDev = process.env.NODE_ENV === 'development'
+const baseURL = process.env.NUXT_APP_BASE_URL || (isDev ? '/miyabi-fan/' : (repositoryName ? `/${repositoryName}/` : '/'))
 
 export default defineNuxtConfig({
   srcDir: 'src/',

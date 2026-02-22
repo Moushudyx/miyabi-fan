@@ -52,6 +52,11 @@ jobs:
         env:
           NUXT_APP_BASE_URL: /${{ github.event.repository.name }}/
 
+      - name: 🔍 Verify output structure
+        run: |
+          ls -la .output/public
+          test -f .output/public/index.html
+
       - name: 🚀 Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -60,6 +65,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

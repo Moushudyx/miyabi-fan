@@ -5,6 +5,10 @@ on:
     branches:
       - main
     paths:
+      - ".github/workflows/deploy.yml"
+      - "nuxt.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - "public/**"
       - "src/**"
   workflow_dispatch:
@@ -25,13 +29,14 @@ jobs:
     steps:
       - name: 📋️ Checkout
         uses: actions/checkout@v4
-        with:
-          node-version: 20
 
       - name: 📦 Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: ⚙️ Setup GitHub Pages
+        uses: actions/configure-pages@v5
 
       - name: 📦 Setup pnpm
         uses: pnpm/action-setup@v3
@@ -45,7 +50,7 @@ jobs:
       - name: 🏗️ Generate
         run: pnpm generate
         env:
-          NUXT_APP_BASE_URL: /miyabi-fan/
+          NUXT_APP_BASE_URL: /${{ github.event.repository.name }}/
 
       - name: 🚀 Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

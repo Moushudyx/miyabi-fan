@@ -323,6 +323,130 @@ const setupPointerControls = () => {
   }
 }
 
+type LoadedModelAsset = {
+  root: import('three').Object3D
+  mesh: SkinnedMesh
+  boundsCenter: Vector3
+  boundsRadius: number
+}
+/** 初始化 three, 懒加载 three.js 与 MMD 相关模块，避免首屏体积爆炸 */
+const initializeThreeRuntime = async () => {
+  const THREE = await import('three')
+  threeModule = THREE
+  const { MMDAnimationHelper, MMDLoader, OrbitControls } = await import('three-stdlib')
+  orbitControlsCtor = OrbitControls
+
+  scene = new THREE.Scene()
+
+  ambientLight = new THREE.AmbientLight(lightSettings.value.ambientColor, lightSettings.value.ambientIntensity)
+  keyLight = new THREE.DirectionalLight(lightSettings.value.keyColor, lightSettings.value.keyIntensity)
+  fillLight = new THREE.DirectionalLight(lightSettings.value.fillColor, lightSettings.value.fillIntensity)
+  updateLightPositions(THREE)
+  scene.add(ambientLight, keyLight, fillLight)
+
+  camera = new THREE.PerspectiveCamera(35, 1, 0.1, 2000)
+  camera.position.set(...props.model.cameraPosition)
+  initialCameraPosition = camera.position.clone()
+  initialCameraQuaternion = camera.quaternion.clone()
+  cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize()
+  cameraYOffset = 0
+
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+  renderer.setSize(stageRef.value!.clientWidth, stageRef.value!.clientHeight, false)
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.outputColorSpace = THREE.SRGBColorSpace
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 1.05
+  stageRef.value!.appendChild(renderer.domElement)
+
+  applyInteractionMode(activeInteractionMode.value)
+
+  const resize = () => {
+    if (!stageRef.value || !camera || !renderer) return
+    const [width, height] = [stageRef.value.clientWidth, stageRef.value.clientHeight]
+    const nextHeight = Math.max(height, 1)
+    camera.aspect = width / nextHeight
+    camera.updateProjectionMatrix()
+    renderer.setSize(width, nextHeight, false)
+  }
+
+  resizeObserver = new ResizeObserver(resize)
+  resizeObserver.observe(stageRef.value!)
+  resize()
+
+  mmdLoader = new MMDLoader()
+  ;(mmdLoader as { setCrossOrigin?: (value: string) => void }).setCrossOrigin?.('anonymous')
+
+  return { THREE, MMDAnimationHelper }
+}
+/** 加载模型资源, MMDLoader 会根据 resourcePath 解析贴图路径 */
+const loadModelAsset = async (THREE: typeof import('three')): Promise<LoadedModelAsset> => {
+  if (!mmdLoader) {
+    throw new Error('模型加载器初始化失败')
+  }
+
+  const { baseUrl, fileName } = splitFileUrl(props.model.modelUrl)
+  const resourceBase = props.model.resourcePath ?? baseUrl
+  mmdLoader.setPath(baseUrl)
+  ;(mmdLoader as { setResourcePath?: (value: string) => void }).setResourcePath?.(resourceBase)
+
+  const loadedModel = await new Promise<import('three').Object3D>((resolve, reject) => {
+    mmdLoader?.load(fileName, resolve, undefined, reject)
+  })
+
+  loadedModel.scale.setScalar(props.model.modelScale)
+  loadedModel.rotation.set(...props.model.modelRotation)
+  applyMmdColorSpaceFix(loadedModel, THREE)
+
+  const bounds = new THREE.Box3().setFromObject(loadedModel)
+  const sphere = bounds.getBoundingSphere(new THREE.Sphere())
+
+  return {
+    root: loadedModel,
+    mesh: loadedModel as SkinnedMesh,
+    boundsCenter: sphere.center.clone(),
+    boundsRadius: sphere.radius,
+  }
+}
+
+const mountModelAsset = async (
+  modelAsset: LoadedModelAsset,
+  MMDAnimationHelperCtor: typeof import('three-stdlib').MMDAnimationHelper
+) => {
+  modelRoot = modelAsset.root
+  modelMesh = modelAsset.mesh
+  modelBoundsCenter = modelAsset.boundsCenter
+  modelBoundsRadius = modelAsset.boundsRadius
+
+  if (activeInteractionMode.value === 'orbit') {
+    applyInteractionMode('orbit')
+  }
+
+  animationHelper = new MMDAnimationHelperCtor({ afterglow: 0.0 })
+  if (props.model.enablePhysics) {
+    await ensureAmmo()
+  }
+  animationHelper.add(modelMesh, { physics: getPhysicsEnabled() })
+
+  if (scene) {
+    scene.add(modelRoot)
+  }
+}
+/** 开始渲染循环 */
+const startRenderLoop = (THREE: typeof import('three')) => {
+  clock = new THREE.Clock()
+
+  const animate = () => {
+    if (!renderer || !scene || !camera) return
+    animationFrameId = window.requestAnimationFrame(animate)
+    const delta = clock?.getDelta() ?? 0
+    animationHelper?.update(delta)
+    renderer.render(scene, camera)
+  }
+
+  animate()
+}
+/** 初始化 three 并加载模型 */
 const loadModel = async () => {
   if (isLoading.value || isLoaded.value) return
   if (!stageRef.value) {
@@ -334,99 +458,10 @@ const loadModel = async () => {
   errorMessage.value = null
 
   try {
-    // 懒加载 three.js 与 MMD 相关模块，避免首屏体积爆炸
-    const THREE = await import('three')
-    threeModule = THREE
-    const { MMDAnimationHelper, MMDLoader, OrbitControls } = await import('three-stdlib')
-    orbitControlsCtor = OrbitControls
-
-    scene = new THREE.Scene()
-
-    ambientLight = new THREE.AmbientLight(lightSettings.value.ambientColor, lightSettings.value.ambientIntensity)
-    keyLight = new THREE.DirectionalLight(lightSettings.value.keyColor, lightSettings.value.keyIntensity)
-    fillLight = new THREE.DirectionalLight(lightSettings.value.fillColor, lightSettings.value.fillIntensity)
-    updateLightPositions(THREE)
-
-    scene.add(ambientLight, keyLight, fillLight)
-
-    camera = new THREE.PerspectiveCamera(35, 1, 0.1, 2000)
-    camera.position.set(...props.model.cameraPosition)
-    initialCameraPosition = camera.position.clone()
-    initialCameraQuaternion = camera.quaternion.clone()
-    cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).normalize()
-    cameraYOffset = 0
-
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(stageRef.value.clientWidth, stageRef.value.clientHeight, false)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-    renderer.outputColorSpace = THREE.SRGBColorSpace
-    renderer.toneMapping = THREE.ACESFilmicToneMapping
-    renderer.toneMappingExposure = 1.05
-    stageRef.value.appendChild(renderer.domElement)
-
-    applyInteractionMode(activeInteractionMode.value)
-
-    const resize = () => {
-      if (!stageRef.value || !camera || !renderer) return
-      // const { width, height } = stageRef.value.getBoundingClientRect()
-      // console.log('resize', width, height)
-      // console.log('stageRef', stageRef.value.clientWidth, stageRef.value.clientHeight)
-      const [width, height] = [stageRef.value.clientWidth, stageRef.value.clientHeight]
-      const nextHeight = Math.max(height, 1)
-      camera.aspect = width / nextHeight
-      camera.updateProjectionMatrix()
-      renderer.setSize(width, nextHeight, false)
-    }
-
-    resizeObserver = new ResizeObserver(resize)
-    resizeObserver.observe(stageRef.value)
-    resize()
-
-    // MMDLoader 会根据 resourcePath 解析贴图路径
-    mmdLoader = new MMDLoader()
-    ;(mmdLoader as { setCrossOrigin?: (value: string) => void }).setCrossOrigin?.('anonymous')
-
-    const { baseUrl, fileName } = splitFileUrl(props.model.modelUrl)
-    const resourceBase = props.model.resourcePath ?? baseUrl
-    mmdLoader.setPath(baseUrl)
-    ;(mmdLoader as { setResourcePath?: (value: string) => void }).setResourcePath?.(resourceBase)
-
-    const loadedModel = await new Promise<import('three').Object3D>((resolve, reject) => {
-      mmdLoader?.load(fileName, resolve, undefined, reject)
-    })
-
-    loadedModel.scale.setScalar(props.model.modelScale)
-    loadedModel.rotation.set(...props.model.modelRotation)
-    applyMmdColorSpaceFix(loadedModel, THREE)
-
-    modelRoot = loadedModel
-    modelMesh = loadedModel as SkinnedMesh
-    const bounds = new THREE.Box3().setFromObject(loadedModel)
-    const sphere = bounds.getBoundingSphere(new THREE.Sphere())
-    modelBoundsCenter = sphere.center.clone()
-    modelBoundsRadius = sphere.radius
-    if (activeInteractionMode.value === 'orbit') {
-      applyInteractionMode('orbit')
-    }
-    // AnimationHelper 负责后续的 VMD 动作与物理更新
-    animationHelper = new MMDAnimationHelper({ afterglow: 0.0 })
-    if (props.model.enablePhysics) {
-      // 物理依赖 Ammo.js，按需加载
-      await ensureAmmo()
-    }
-    animationHelper.add(modelMesh, { physics: getPhysicsEnabled() })
-    clock = new THREE.Clock()
-    scene.add(loadedModel)
-
-    const animate = () => {
-      if (!renderer || !scene || !camera) return
-      animationFrameId = window.requestAnimationFrame(animate)
-      const delta = clock?.getDelta() ?? 0
-      animationHelper?.update(delta)
-      renderer.render(scene, camera)
-    }
-
-    animate()
+    const { THREE, MMDAnimationHelper } = await initializeThreeRuntime()
+    const modelAsset = await loadModelAsset(THREE)
+    await mountModelAsset(modelAsset, MMDAnimationHelper)
+    startRenderLoop(THREE)
     isLoaded.value = true
   } catch (error) {
     const message = error instanceof Error ? error.message : '模型加载失败'
